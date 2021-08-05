@@ -297,43 +297,24 @@ out_info_path = args.out_dir + '/CHR' + args.chr + '_StackedTrain_Info.txt'
 # Print input arguments to log
 print(
 '''********************************
-Input Arguments
-
+Input Arguments:
 Gene Annotation and Expression file: {geneexp_path}
-
 Training sampleID file: {sampleid_path}
-
 Chromosome: {chr}
-
 K (number of trained input models): {K}
-
-cis-eQTL weight files:
-  {w_paths_str}
-
+cis-eQTL weight files:{w_paths_str}
 Training genotype file: {geno_path}
-
 Genotype file used for training is type: {genofile_type}
-
 Genotype data format: {format}
-
 Gene training region SNP inclusion window: +-{window}
-
 Excluding SNPs if missing rate exceeds: {missing_rate}
-
 Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |{maf_diff}|
-
 HWE p-value threshold for SNP inclusion: {hwe}
-
 {cvR2_str} Stacked Regression model by 5-fold cross validation.
-
 Number of threads: {thread}
-
 Output directory: {out_dir}
-
 Output training info file: {out_info}
-
 Output trained weights file: {out_weight}
-
 ********************************'''.format(
 	**args.__dict__,
 	cvR2_str = {0:'Skipping evaluation of', 1:'Evaluating'}[args.cvR2],
