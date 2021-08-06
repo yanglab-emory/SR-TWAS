@@ -33,17 +33,17 @@ start_time = time()
 parser = argparse.ArgumentParser(description='SR-TWAS script.')
 
 # Specify tool directory
-parser.add_argument('--TIGAR_dir',type=str)
+parser.add_argument('--TIGAR_dir', type=str)
 
 # eQTL weight files
-parser.add_argument('--weights',dest='w_paths',nargs='+',default=[],type=str)
+parser.add_argument('--weights', dest='w_paths', nargs='+', default=[], type=str)
 # ASSUME THESE FILES ARE *TABIXED*
 
 # Test sampleID
-parser.add_argument('--train_sampleID',type=str,dest='sampleid_path')
+parser.add_argument('--train_sampleID', type=str, dest='sampleid_path')
 
 # specified chromosome number
-parser.add_argument('--chr',type=str)
+parser.add_argument('--chr', type=str, dest='chrm')
 
 # # Gene annotation file
 # parser.add_argument('--gene_anno',type=str,dest='annot_path')
@@ -58,7 +58,7 @@ parser.add_argument('--genofile', type=str, dest='geno_path')
 parser.add_argument('--genofile_type', type=str)
 
 # 'DS' or 'GT' for VCF genotype file
-parser.add_argument('--format', type=str)
+parser.add_argument('--format', type=str, dest='data_format')
 
 # window
 parser.add_argument('--window', type=int)
@@ -108,6 +108,9 @@ def wk_dict_vals(w_paths, k, cols=None):
 		'cols': wk_cols}
 
 	return wk_dict
+
+
+
 
 def flatten(nested_list):
 	return [j for i in nested_list for j in i]
@@ -280,18 +283,18 @@ if Kweights < 2:
 if args.genofile_type == 'vcf':
 	gcol_sampleids_strt_ind = 9
 
-	if (args.format != 'GT') and (args.format != 'DS'):
+	if (args.data_format != 'GT') and (args.data_format != 'DS'):
 		raise SystemExit('Please specify the genotype data format used by the vcf file (--format ) as either "GT" or "DS".\n')
 		
 elif args.genofile_type == 'dosage':
 	gcol_sampleids_strt_ind = 5
-	args.format = 'DS'
+	args.data_format = 'DS'
 
 else:
 	raise SystemExit('Please specify the type input genotype file type (--genofile_type) as either "vcf" or "dosage".\n')
 
-out_weight_path = args.out_dir + '/temp_CHR' + args.chr + '_stacked_eQTLweights.txt'
-out_info_path = args.out_dir + '/CHR' + args.chr + '_StackedTrain_Info.txt'
+out_weight_path = args.out_dir + '/temp_CHR' + args.chrm + '_stacked_eQTLweights.txt'
+out_info_path = args.out_dir + '/CHR' + args.chrm + '_StackedTrain_Info.txt'
 
 #############################################################
 # Print input arguments to log
@@ -323,83 +326,93 @@ Output trained weights file: {out_weight}
 	out_info = out_info_path,
 	out_weight = out_weight_path))
 
+# tg.print_args(args.__dict__)
+
 ##########################
 # STUFF FOR TEST FILES
 ##########################
 # Gene Expression header, sampleIDs
-print('Reading genotype, expression file headers.\n')
-exp_cols = tg.get_header(args.geneexp_path)
-exp_info_cols = list(exp_cols[:5])
-exp_sampleids = exp_cols[5:]
+print('Reading genotype, expression file headers, sample IDs.\n')
+sampleID, sample_size, geno_info, exp_info = tg.sampleid_startup(**args.__dict__)
 
-# genofile header, sampleIDs
-try:
-	g_cols = tg.call_tabix_header(args.geno_path)
-except: 
-	g_cols = tg.get_header(args.geno_path, zipped=True)
-gcol_sampleids = g_cols[gcol_sampleids_strt_ind:]
-
-# geno, exp overlapping sampleIDs
-gcol_exp_sampleids = np.intersect1d(gcol_sampleids, exp_sampleids)
-
-if not gcol_exp_sampleids.size:
-	raise SystemExit('The gene expression file and genotype file have no sampleIDs in common.')
-
-# use the overlapping sampleIDs in the genotype and expression file
-print('Reading sampleID file.\n')
-spec_sampleids = pd.read_csv(
-	args.sampleid_path,
-	sep='\t',
-	header=None)[0].drop_duplicates()
-
-print('Matching sampleIDs.\n')
-sampleID = np.intersect1d(spec_sampleids, gcol_exp_sampleids)
-
-if not sampleID.size:
-	raise SystemExit('There are no overlapped sample IDs between the gene expression file, genotype file, and sampleID file.')
-
-# get columns to read in
-g_cols_ind, g_dtype = tg.genofile_cols_dtype(g_cols, args.genofile_type, sampleID)
-e_cols, e_dtype = tg.exp_cols_dtype(exp_cols, sampleID)
-
-### EXPRESSION FILE
-# ### Extract expression level by chromosome
+# Read in gene expression info
 print('Reading gene expression data.\n')
-try:
-	GeneExp_chunks = pd.read_csv(
-		args.geneexp_path, 
-		sep='\t',
-		header=0,
-		iterator=True, 
-		chunksize=10000,
-		usecols=e_cols,
-		dtype=e_dtype)
+GeneExp, TargetID, n_targets = tg.read_gene_annot_exp(**exp_info)
 
-	GeneExp = pd.concat([x[x['CHROM']==args.chr] for x in GeneExp_chunks],
-		ignore_index=True)
 
-except:
-	GeneExp_chunks = pd.read_csv(
-		args.geneexp_path, 
-		sep='\t',
-		header=None,
-		iterator=True,
-		skiprows=0,
-		chunksize=10000,
-		usecols=e_cols)
+# print('Reading genotype, expression file headers.\n')
+# exp_cols = tg.get_header(args.geneexp_path)
+# exp_info_cols = list(exp_cols[:5])
+# exp_sampleids = exp_cols[5:]
 
-	GeneExp = pd.concat([x[x[0]==args.chr] for x in GeneExp_chunks],
-		ignore_index=True).astype(e_dtype)
+# # genofile header, sampleIDs
+# try:
+# 	g_cols = tg.call_tabix_header(args.geno_path)
+# except: 
+# 	g_cols = tg.get_header(args.geno_path, zipped=True)
+# gcol_sampleids = g_cols[gcol_sampleids_strt_ind:]
 
-	GeneExp.columns = [exp_cols[i] for i in GeneExp.columns]
+# # geno, exp overlapping sampleIDs
+# gcol_exp_sampleids = np.intersect1d(gcol_sampleids, exp_sampleids)
 
-if GeneExp.empty:
-	raise SystemExit('There are no valid gene expression training data for chromosome ' + args.chr + '\n')
+# if not gcol_exp_sampleids.size:
+# 	raise SystemExit('The gene expression file and genotype file have no sampleIDs in common.')
 
-GeneExp = tg.optimize_cols(GeneExp)
+# # use the overlapping sampleIDs in the genotype and expression file
+# print('Reading sampleID file.\n')
+# spec_sampleids = pd.read_csv(
+# 	args.sampleid_path,
+# 	sep='\t',
+# 	header=None)[0].drop_duplicates()
 
-TargetID = GeneExp.TargetID.values
-n_targets = TargetID.size
+# print('Matching sampleIDs.\n')
+# sampleID = np.intersect1d(spec_sampleids, gcol_exp_sampleids)
+
+# if not sampleID.size:
+# 	raise SystemExit('There are no overlapped sample IDs between the gene expression file, genotype file, and sampleID file.')
+
+# # get columns to read in
+# g_cols_ind, g_dtype = tg.genofile_cols_dtype(g_cols, args.genofile_type, sampleID)
+# e_cols, e_dtype = tg.exp_cols_dtype(exp_cols, sampleID)
+
+# ### EXPRESSION FILE
+# # ### Extract expression level by chromosome
+# print('Reading gene expression data.\n')
+# try:
+# 	GeneExp_chunks = pd.read_csv(
+# 		args.geneexp_path, 
+# 		sep='\t',
+# 		header=0,
+# 		iterator=True, 
+# 		chunksize=10000,
+# 		usecols=e_cols,
+# 		dtype=e_dtype)
+
+# 	GeneExp = pd.concat([x[x['CHROM']==args.chrm] for x in GeneExp_chunks],
+# 		ignore_index=True)
+
+# except:
+# 	GeneExp_chunks = pd.read_csv(
+# 		args.geneexp_path, 
+# 		sep='\t',
+# 		header=None,
+# 		iterator=True,
+# 		skiprows=0,
+# 		chunksize=10000,
+# 		usecols=e_cols)
+
+# 	GeneExp = pd.concat([x[x[0]==args.chrm] for x in GeneExp_chunks],
+# 		ignore_index=True).astype(e_dtype)
+
+# 	GeneExp.columns = [exp_cols[i] for i in GeneExp.columns]
+
+# if GeneExp.empty:
+# 	raise SystemExit('There are no valid gene expression training data for chromosome ' + args.chrm + '\n')
+
+# GeneExp = tg.optimize_cols(GeneExp)
+
+# TargetID = GeneExp.TargetID.values
+# n_targets = TargetID.size
 
 ##########################
 wdict = {k: {**wk_dict_vals(args.w_paths, k)} for k in range(Kweights)}
@@ -458,39 +471,50 @@ def thread_process(num):
 	
 	target = TargetID[num]
 	print('num=' + str(num) + '\nTargetID=' + target)
-	target_exp = GeneExp.iloc[[num]]
+	Expr = GeneExp.iloc[[num]]
+
 	# center data
-	target_exp = tg.center(target_exp, sampleID)
+	Expr = tg.center(Expr, sampleID)
 
-	start = str(max(int(target_exp.GeneStart) - args.window, 0))
-	end = str(int(target_exp.GeneEnd) + args.window)
+	start = str(max(int(Expr.GeneStart) - args.window, 0))
+	end = str(int(Expr.GeneEnd) + args.window)
 
-	g_proc_out = tg.call_tabix(args.geno_path, args.chr, start, end)
+	# Query files 
+	tabix_target_ks, empty_target_ks = tg.tabix_query_files(start, end, **args.__dict__)
 
-	if not g_proc_out:
-		print('There is no genotype data for TargetID: ' + target + '\n')
-		return None
+	# READ IN AND PROCESS GENOTYPE DATA 
+	# file must be bgzipped and tabix
+	Geno = tg.read_tabix(start, end, sampleID, **geno_info)
 
-	target_geno = pd.read_csv(
-		StringIO(g_proc_out.decode('utf-8')),
-		sep='\t',
-		low_memory=False,
-		header=None,
-		usecols=g_cols_ind,
-		dtype=g_dtype,
-		na_values=['.', '.|.', './.'])
 
-	target_geno.columns = [g_cols[i] for i in target_geno.columns]
-	target_geno = tg.optimize_cols(target_geno)
+	# g_proc_out = tg.call_tabix(args.geno_path, args.chrm, start, end)
+	# if not g_proc_out:
+	# 	print('There is no genotype data for TargetID: ' + target + '\n')
+	# 	return None
+	# Geno = pd.read_csv(
+	# 	StringIO(g_proc_out.decode('utf-8')),
+	# 	sep='\t',
+	# 	low_memory=False,
+	# 	header=None,
+	# 	usecols=g_cols_ind,
+	# 	dtype=g_dtype,
+	# 	na_values=['.', '.|.', './.'])
+	# Geno.columns = [g_cols[i] for i in Geno.columns]
+	# Geno = tg.optimize_cols(Geno)
+	# # get snpIDs
+	# Geno['snpID'] = tg.get_snpIDs(Geno)
+	# Geno = Geno.drop_duplicates(['snpID'], keep='first', ignore_index=True).reset_index(drop=True)
 
-	# get snpIDs
-	target_geno['snpID'] = tg.get_snpIDs(target_geno)
-	target_geno = target_geno.drop_duplicates(['snpID'], keep='first', ignore_index=True).reset_index(drop=True)
 
 	# read in weight data for target from all K weight files
-	weights = pd.DataFrame()
-	target_ks = []
-	empty_target_ks = []
+	Weights = pd.DataFrame()
+	# target_ks = []
+	# empty_target_ks = []
+
+	for wk in tabix_target_ks:
+		WeightK = tg.read_tabix(start, end, target=target, **weight_info)
+
+
 
 	for wk in wdict:
 		compress_type = 'gzip' if wdict[wk]['path'].endswith('.gz') else None
@@ -522,12 +546,12 @@ def thread_process(num):
 			weightk['snpID'] = tg.get_snpIDs(weightk)
 			generated_snpID = True
 
-		snp_overlap = np.intersect1d(weightk.snpID, target_geno.snpID)
+		snp_overlap = np.intersect1d(weightk.snpID, Geno.snpID)
 
 		if not snp_overlap.size and not generated_snpID:
 			# may be bad ID/snpID column in file
 			weightk['snpID'] = tg.get_snpIDs(weightk)
-			snp_overlap = np.intersect1d(weightk.snpID, target_geno.snpID)
+			snp_overlap = np.intersect1d(weightk.snpID, Geno.snpID)
 
 		weightk = weightk[weightk.snpID.isin(snp_overlap)].drop_duplicates(['snpID'],keep='first').reset_index(drop=True)
 
@@ -557,62 +581,63 @@ def thread_process(num):
 
 	### 
 	# get overlapping snps, filter both files
-	snp_overlap = np.intersect1d(weights.snpID, target_geno.snpID)
+	snp_overlap = np.intersect1d(weights.snpID, Geno.snpID)
 
 	if not snp_overlap.size:
 		print('No overlapping test SNPs between weight files and genotype file for TargetID: ' + target + '\n')
 		return None
 
 	weights = weights[weights.snpID.isin(snp_overlap)].reset_index(drop=True)
-	target_geno = target_geno[target_geno.snpID.isin(snp_overlap)].reset_index(drop=True)
+	Geno = Geno[Geno.snpID.isin(snp_overlap)].reset_index(drop=True)
 	### 
 
 	# finish processing genofile
-	if args.genofile_type == 'vcf':
-		target_geno = tg.check_prep_vcf(target_geno, args.format, sampleID)
 
-	# reformat sample values
-	target_geno = tg.reformat_sample_vals(target_geno, args.format, sampleID)
+	# if args.genofile_type == 'vcf':
+	# 	Geno = tg.check_prep_vcf(Geno, args.data_format, sampleID)
+
+	# # reformat sample values
+	# Geno = tg.reformat_sample_vals(Geno, args.data_format, sampleID)
 
 	# filter out variants that exceed missing rate threshold
-	target_geno = tg.handle_missing(target_geno, sampleID, args.missing_rate)
+	Geno = tg.handle_missing(Geno, sampleID, args.missing_rate)
 
 	# maf
-	target_geno = tg.calc_maf(target_geno, sampleID, 0, op=operator.ge)
+	Geno = tg.calc_maf(Geno, sampleID, 0, op=operator.ge)
 
 	# get, filter p_HWE
-	target_geno = tg.calc_p_hwe(target_geno, sampleID, args.hwe)
+	Geno = tg.calc_p_hwe(Geno, sampleID, args.hwe)
 
 	# center data
-	target_geno = tg.center(target_geno, sampleID)
+	Geno = tg.center(Geno, sampleID)
 
 	### 
 	# get overlapping snps after potential filtering, filter both files
-	# snp_overlap = np.intersect1d(weights.snpID, target_geno.snpID)
+	# snp_overlap = np.intersect1d(weights.snpID, Geno.snpID)
 
 	# if not snp_overlap.size:
 	#     print('No overlapping test SNPs between weight files and genotype file after filtering for TargetID: ' + target + '\n')
 	#     return None
 
 	# weights = weights[weights.snpID.isin(snp_overlap)].reset_index(drop=True)
-	# target_geno = target_geno[target_geno.snpID.isin(snp_overlap)].reset_index(drop=True)
+	# Geno = Geno[Geno.snpID.isin(snp_overlap)].reset_index(drop=True)
 	# ### 
 
 	# merge datasets (inner in case missing snpIDs after filtering)
-	train = target_geno.merge(weights,
+	Train = Geno.merge(weights,
 		left_on='snpID', 
 		right_on='snpID', 
 		how='inner').set_index('snpID')
 
 	# filter by MAF diff - if an MAF# differs too much, set ES# to nan
 	for k in range(Kweights):
-		exceeds_maf_diff = np.abs(train[MAF_cols[k]].values-train['MAF'].values) > args.maf_diff
-		train.loc[exceeds_maf_diff, ES_cols[k]] = np.nan
+		exceeds_maf_diff = np.abs(Train[MAF_cols[k]].values-Train['MAF'].values) > args.maf_diff
+		Train.loc[exceeds_maf_diff, ES_cols[k]] = np.nan
 
 	# filter out snps where all weights are nan
-	all_missing_weights = train[ES_cols].count(axis=1) == 0
-	train = train[~all_missing_weights]
-	n_snps = train.index.size
+	all_missing_weights = Train[ES_cols].count(axis=1) == 0
+	Train = Train[~all_missing_weights]
+	n_snps = Train.index.size
 
 	if not n_snps:
 		print('All SNP MAFs for training data and testing data differ by a magnitude greater than ' + str(args.maf_diff) + ' for TargetID: ' + target + '\n')
@@ -620,22 +645,22 @@ def thread_process(num):
 
 	# do stacked regression
 	print('Performing Stacked Regression.')
-	# target_sampleid = np.intersect1d(train.columns.isin(sampleID), target_exp.columns.isin(sampleID))
-	# X = train[target_sampleid].T
-	# Y = target_exp[target_sampleid].values.ravel()
-	X = train[sampleID].T
-	Y = target_exp[sampleID].values.ravel()
+	# target_sampleid = np.intersect1d(Train.columns.isin(sampleID), Expr.columns.isin(sampleID))
+	# X = Train[target_sampleid].T
+	# Y = Expr[target_sampleid].values.ravel()
+	X = Train[sampleID].T
+	Y = Expr[sampleID].values.ravel()
 
 	if len(target_ks) == 1:
 		# only one weight model with usable data, don't need to do stacking
-		# 'Only trained model ' + str(int(target_ks[0])) + ' has usable weights for TargetID: ' + target + '\n'
-		print('Only trained model ' + str(target_ks[0]) + ' has usable weights for TargetID: ' + target + '\n')
-		reg = WeightEstimator(train[ES_cols[target_ks[0]]]).fit(X, Y)
+		# 'Only Trained model ' + str(int(target_ks[0])) + ' has usable weights for TargetID: ' + target + '\n'
+		print('Only Trained model ' + str(target_ks[0]) + ' has usable weights for TargetID: ' + target + '\n')
+		reg = WeightEstimator(Train[ES_cols[target_ks[0]]]).fit(X, Y)
 		reg.zetas_ = [1]
 
 	else:
 		# do stacking
-		weight_estimators = [(str(k), WeightEstimator(train[ES_cols[k]])) for k in target_ks]
+		weight_estimators = [(str(k), WeightEstimator(Train[ES_cols[k]])) for k in target_ks]
 		reg = WeightStackingRegressor(estimators=weight_estimators).fit(X, Y)
 
 	# 5-FOLD CROSS-VALIDATION
@@ -655,11 +680,11 @@ def thread_process(num):
 	zetas = format_final_zetas(reg.zetas_, target_ks, Kweights)
 	wk_out_vals = reg.final_est_out_vals(X, Y, ks=target_ks, K=Kweights)
 
-	# output trained weights
-	out_weights = train[['CHROM','POS','REF','ALT','MAF','p_HWE']].copy()
+	# output Trained weights
+	out_weights = Train[['CHROM','POS','REF','ALT','MAF','p_HWE']].copy()
 	out_weights['ID'] = out_weights.index
 	out_weights['TargetID'] = target
-	out_weights['ES'] = np.dot(train[ES_cols].fillna(0), zetas)
+	out_weights['ES'] = np.dot(Train[ES_cols].fillna(0), zetas)
 
 	# filter for non-zero effect size
 	out_weights = out_weights[out_weights['ES']!=0]
@@ -675,20 +700,20 @@ def thread_process(num):
 		mode='a')
 
 	# output training info
-	train_info = target_exp[exp_info_cols].copy()
-	train_info['sample_size'] = Y.size
-	train_info['ST_N_SNP'] = n_snps
-	train_info['ST_N_EFFECT_SNP'] = out_weights.ES.size
-	train_info['ST_CVR2'] = avg_r2_cv
-	train_info['ST_R2'] = stacked_r2
-	train_info['ST_PVAL'] = stacked_pval
+	Info = Expr[exp_info_cols].copy()
+	Info['sample_size'] = Y.size
+	Info['ST_N_SNP'] = n_snps
+	Info['ST_N_EFFECT_SNP'] = out_weights.ES.size
+	Info['ST_CVR2'] = avg_r2_cv
+	Info['ST_R2'] = stacked_r2
+	Info['ST_PVAL'] = stacked_pval
 
-	train_info[zeta_out_cols] = zetas
-	train_info[wk_out_info_cols] = wk_out_vals
+	Info[zeta_out_cols] = zetas
+	Info[wk_out_info_cols] = wk_out_vals
 
-	train_info = train_info.astype(wk_out_info_dtypes)
+	Info = Info.astype(wk_out_info_dtypes)
 
-	train_info.to_csv(
+	Info.to_csv(
 		out_info_path,
 		sep='\t',
 		header=None,
