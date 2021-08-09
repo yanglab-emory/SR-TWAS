@@ -4,10 +4,10 @@
 import argparse
 import multiprocessing
 import operator
-import subprocess
+# import subprocess
 import sys
 
-from io import StringIO
+# from io import StringIO
 from time import time
 
 import numpy as np
@@ -33,7 +33,8 @@ start_time = time()
 parser = argparse.ArgumentParser(description='SR-TWAS script.')
 
 # Specify tool directory
-parser.add_argument('--TIGAR_dir', type=str)
+# parser.add_argument('--TIGAR_dir', type=str)
+parser.add_argument('--SR_TWAS_dir',type=str)
 
 # eQTL weight files
 parser.add_argument('--weights', dest='w_paths', nargs='+', default=[], type=str)
@@ -81,36 +82,40 @@ parser.add_argument('--hwe', type=float)
 parser.add_argument('--out_dir', type=str)
 
 args = parser.parse_args()
-sys.path.append(args.TIGAR_dir)
+# sys.path.append(args.TIGAR_dir)
+sys.path.append(args.SR_TWAS_dir)
 
 ##########################
 import TIGARutils as tg
 
 # used to make entries for the dictionary used in reading in the weight files
-def wk_dict_vals(w_paths, k, cols=None):
-	# cols that will have weight number appended, rename dictionaries
-	cols = ['ES','MAF'] if not cols else cols
-	cols_k = [x+str(k) for x in cols]
-	rename_cols = {x: x+str(k) for x in cols}
+# def wk_dict_vals(w_paths, k, cols=None):
+# 	# cols that will have weight number appended, rename dictionaries
+# 	cols = ['ES','MAF'] if not cols else cols
+# 	cols_k = [x+str(k) for x in cols]
+# 	rename_cols = {x: x+str(k) for x in cols}
 
-	# all columns in header, with renamed names
-	wk_names = tg.get_header(w_paths[k], rename=rename_cols, zipped=w_paths[k].endswith('.gz'))
-	wk_cols = ['CHROM','POS','REF','ALT','TargetID'] + cols_k
+# 	# all columns in header, with renamed names
+# 	wk_names = tg.get_header(w_paths[k], rename=rename_cols, zipped=w_paths[k].endswith('.gz'))
+# 	wk_cols = ['CHROM','POS','REF','ALT','TargetID'] + cols_k
 
-	if 'ID' in wk_names:
-		wk_cols.append('ID')
-	elif 'snpID' in wk_names:
-		wk_cols.append('snpID')
+# 	if 'ID' in wk_names:
+# 		wk_cols.append('ID')
+# 	elif 'snpID' in wk_names:
+# 		wk_cols.append('snpID')
 
-	wk_dict = {
-		'path': w_paths[k], 
-		'names': wk_names,
-		'cols': wk_cols}
+# 	wk_dict = {
+# 		'path': w_paths[k], 
+# 		'names': wk_names,
+# 		'cols': wk_cols}
 
-	return wk_dict
+# 	return wk_dict
 
+def ES(k):
+	return 'ES'+str(k)
 
-
+def MAF(k):
+	return 'MAF'+str(k)
 
 def flatten(nested_list):
 	return [j for i in nested_list for j in i]
@@ -281,20 +286,24 @@ if Kweights < 2:
 	print('Must specify at least 2 weight files for stacked regression \n')
 
 if args.genofile_type == 'vcf':
-	gcol_sampleids_strt_ind = 9
+	# gcol_sampleids_strt_ind = 9
 
 	if (args.data_format != 'GT') and (args.data_format != 'DS'):
 		raise SystemExit('Please specify the genotype data format used by the vcf file (--format ) as either "GT" or "DS".\n')
 		
 elif args.genofile_type == 'dosage':
-	gcol_sampleids_strt_ind = 5
+	# gcol_sampleids_strt_ind = 5
 	args.data_format = 'DS'
 
 else:
 	raise SystemExit('Please specify the type input genotype file type (--genofile_type) as either "vcf" or "dosage".\n')
 
+
 out_weight_path = args.out_dir + '/temp_CHR' + args.chrm + '_stacked_eQTLweights.txt'
 out_info_path = args.out_dir + '/CHR' + args.chrm + '_StackedTrain_Info.txt'
+
+# out_weight_path = tg.get_abs_path(args.out_dir) + '/temp_CHR' + args.chrm + '_stacked_eQTLweights.txt'
+# out_info_path = tg.get_abs_path(args.out_dir) + '/CHR' + args.chrm + '_StackedTrain_Info.txt'
 
 #############################################################
 # Print input arguments to log
@@ -303,12 +312,12 @@ print(
 Input Arguments:
 Gene Annotation and Expression file: {geneexp_path}
 Training sampleID file: {sampleid_path}
-Chromosome: {chr}
+Chromosome: {chrm}
 K (number of trained input models): {K}
 cis-eQTL weight files:{w_paths_str}
 Training genotype file: {geno_path}
 Genotype file used for training is type: {genofile_type}
-Genotype data format: {format}
+Genotype data format: {data_format}
 Gene training region SNP inclusion window: +-{window}
 Excluding SNPs if missing rate exceeds: {missing_rate}
 Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |{maf_diff}|
@@ -339,7 +348,7 @@ sampleID, sample_size, geno_info, exp_info = tg.sampleid_startup(**args.__dict__
 print('Reading gene expression data.\n')
 GeneExp, TargetID, n_targets = tg.read_gene_annot_exp(**exp_info)
 
-
+# exp_info_cols = list(GeneExp.columns[:5])
 # print('Reading genotype, expression file headers.\n')
 # exp_cols = tg.get_header(args.geneexp_path)
 # exp_info_cols = list(exp_cols[:5])
@@ -415,21 +424,26 @@ GeneExp, TargetID, n_targets = tg.read_gene_annot_exp(**exp_info)
 # n_targets = TargetID.size
 
 ##########################
-wdict = {k: {**wk_dict_vals(args.w_paths, k)} for k in range(Kweights)}
+# wdict = {k: {**wk_dict_vals(args.w_paths, k)} for k in range(Kweights)}
 
-weight_dtypes = {
-	'CHROM': object,
-	'POS': np.int64,
-	'REF': object,
-	'ALT': object,
-	'TargetID': object,
-	'ID': object,
-	'snpID':object,
-	**{x+str(k): np.float64 for x in ['ES','MAF'] for k in range(Kweights)}  
-	}
+# weight_dtypes = {
+# 	'CHROM': object,
+# 	'POS': np.int64,
+# 	'REF': object,
+# 	'ALT': object,
+# 	'TargetID': object,
+# 	'ID': object,
+# 	'snpID':object,
+# 	**{x+str(k): np.float64 for x in ['ES','MAF'] for k in range(Kweights)}  
+# 	}
 
-ES_cols = ['ES'+str(k) for k in range(Kweights)]
-MAF_cols = ['MAF'+str(k) for k in range(Kweights)]
+
+weights_info = tg.weight_k_files_info(**args.__dict__)
+
+ES_cols = [ES(k) for k in range(Kweights)]
+
+# ES_cols = ['ES'+str(k) for k in range(Kweights)]
+# MAF_cols = ['MAF'+str(k) for k in range(Kweights)]
 
 ##########################
 print('Creating file: ' + out_weight_path + '\n')
@@ -442,17 +456,19 @@ pd.DataFrame(columns=out_weight_cols).to_csv(
 	mode='w')
 
 # info output file
-out_info_dtypes_dict = {
-	'_N_SNP': np.int64, '_CVR2': np.float64,
-	'_R2': np.float64, '_PVAL': np.float64}
 
-zeta_out_cols = ['Z'+str(k) for k in range(Kweights)]
-wk_out_info_dtypes = {'W'+str(k)+col: out_info_dtypes_dict[col] for k in range(Kweights) for col in out_info_dtypes_dict}
+# dictionary of dtypes for info output
+# wk_dtypes_dict = {'_N_SNP':np.int64,'_CVR2':np.float64,'_R2':np.float64,'_PVAL':np.float64}
+# info_wk_dtypes = {'W'+str(k)+col:wk_dtypes_dict[col] for k in range(Kweights) for col in wk_dtypes_dict}
+# {'W'+str(k)+key:v for key,v in wk_dtypes_dict.items() for k in range(Kweights)}
 
-wk_out_info_cols = list(wk_out_info_dtypes.keys())
+info_wk_dtypes = {'W'+str(k)+n : v for k in range(Kweights) for n,v in {'_N_SNP':np.int64,'_CVR2':np.float64,'_R2':np.float64,'_PVAL':np.float64}.items()}
+info_zeta_cols = ['Z'+str(k) for k in range(Kweights)]
+info_wk_cols = list(info_wk_dtypes.keys())
 
 print('Creating file: ' + out_info_path + '\n')
-out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + zeta_out_cols + wk_out_info_cols
+# out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
+out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','ST_N_SNP','ST_N_EFFECT_SNP','ST_CVR2', 'ST_R2', 'ST_PVAL'] + info_zeta_cols + info_wk_cols
 
 pd.DataFrame(columns=out_info_cols).to_csv(
 	out_info_path,
@@ -479,13 +495,12 @@ def thread_process(num):
 	start = str(max(int(Expr.GeneStart) - args.window, 0))
 	end = str(int(Expr.GeneEnd) + args.window)
 
-	# Query files 
+	# Query files; function stops here if no data in genotype and/or no weight file data
 	tabix_target_ks, empty_target_ks = tg.tabix_query_files(start, end, **args.__dict__)
 
 	# READ IN AND PROCESS GENOTYPE DATA 
 	# file must be bgzipped and tabix
 	Geno = tg.read_tabix(start, end, sampleID, **geno_info)
-
 
 	# g_proc_out = tg.call_tabix(args.geno_path, args.chrm, start, end)
 	# if not g_proc_out:
@@ -505,90 +520,181 @@ def thread_process(num):
 	# Geno['snpID'] = tg.get_snpIDs(Geno)
 	# Geno = Geno.drop_duplicates(['snpID'], keep='first', ignore_index=True).reset_index(drop=True)
 
-
 	# read in weight data for target from all K weight files
 	Weights = pd.DataFrame()
-	# target_ks = []
+	target_ks = []
 	# empty_target_ks = []
 
-	for wk in tabix_target_ks:
-		WeightK = tg.read_tabix(start, end, target=target, **weight_info)
+for k in tabix_target_ks:
+		# read in from tabix, may be empty
+		W_k = tg.read_tabix(start, end, target=target, raise_error=False, **weights_info[k])
 
+		while not W_k.empty:
+			## CURRENTLY IGNORES ENSEMBLE VERSION
+			# ## CONSIDER CHECKING IF ('.' in target) and requiring ensemble version if specified in the gene annotation file; otherwise use whatever ensemble version in the weight file
+			# if np.any(W_k.TargetID.str.contains('.')):
+			# 	W_k['TargetID'] = W_k.TargetID.str.split('.', expand=True)[0]
 
+			W_k['snpIDflip'] = tg.get_snpIDs(W_k, flip=True)
 
-	for wk in wdict:
-		compress_type = 'gzip' if wdict[wk]['path'].endswith('.gz') else None
+			W_k = W_k[np.any(W_k[['snpID','snpIDflip']].isin(Geno.snpID.values), axis=1)].reset_index(drop=True)
 
-		weightk_chunks = pd.read_csv(
-			wdict[wk]['path'], 
-			sep='\t', 
-			iterator=True, 
-			chunksize=10000,
-			header=0,
-			compression = compress_type,
-			names=wdict[wk]['names'],
-			usecols=wdict[wk]['cols'],
-			dtype=weight_dtypes)
+			# if not in Geno.snpIDs, assumed flipped; if flipped, 1 - MAF and -ES
+			flip = np.where(W_k.snpID.isin(Geno.snpID), True, False)
 
-		weightk = pd.concat([x[x['TargetID'].apply(lambda x:x.startswith(target))] for x in weightk_chunks], ignore_index=True)
+			if not np.all(flip):
+				# set correct snpID, MAF, ES
+				W_k['snpID'] = np.where(flip, W_k.snpID, W_k.snpIDflip)
+				W_k[MAF(k)] = np.where(flip, W_k[MAF(k)], 1 - W_k[MAF(k)])
+				W_k[ES(k)] = np.where(flip, W_k[ES(k)], -W_k[ES(k)])
 
-		# remove gene versions
-		weightk['TargetID'] = weightk.TargetID.apply(lambda x:x.split('.')[0])
+			W_k = W_k.drop(columns=['CHROM','POS','REF','ALT','TargetID','snpIDflip'])
 
-		weightk = tg.optimize_cols(weightk)
+			target_ks.append(k)
 
-		generated_snpID = False
+			if Weights.empty:
+				Weights = W_k
+			else:
+				Weights = Weights.merge(W_k, how='outer', on=['snpID'])
 
-		if 'ID' in weightk.columns:
-			weightk = weightk.rename(columns={'ID':'snpID'})
-
-		if not 'snpID' in weightk.columns:
-			weightk['snpID'] = tg.get_snpIDs(weightk)
-			generated_snpID = True
-
-		snp_overlap = np.intersect1d(weightk.snpID, Geno.snpID)
-
-		if not snp_overlap.size and not generated_snpID:
-			# may be bad ID/snpID column in file
-			weightk['snpID'] = tg.get_snpIDs(weightk)
-			snp_overlap = np.intersect1d(weightk.snpID, Geno.snpID)
-
-		weightk = weightk[weightk.snpID.isin(snp_overlap)].drop_duplicates(['snpID'],keep='first').reset_index(drop=True)
-
-		weightk = weightk.drop(columns=['CHROM','POS','REF','ALT','TargetID'])
-
-		if weightk.empty:
-			empty_target_ks.append(wk)
+			break
 
 		else:
-			target_ks.append(wk)
+			empty_target_ks.append(k)
 
-		if weights.empty:
-			weights = weightk
-
-		else:
-			# weights = weights.merge(weightk, how='outer',on=['CHROM','POS','REF','ALT','TargetID','snpID'])
-			weights = weights.merge(weightk, how='outer', on=['snpID'])
-
-	if weights.empty:
-		print('No cis-eQTL weights for TargetID: ' + target + '\n')
+	if Weights.empty:
+		print('No cis-eQTL weights with snp overlap in genotype data for target.\n')
 		return None
 
-	# weights = weights.drop(columns=['CHROM','POS','REF','ALT','TargetID'])
+	# for k in tabix_target_ks:
+	# 	W_k = tg.read_tabix(start, end, target=target, raise_error=False, **weights_info[k])
 
-	empty_wk_cols = flatten([['ES'+str(k),'MAF'+str(k)] for k in empty_target_ks])
-	weights[empty_wk_cols] = np.nan
+	# 	while not W_k.empty:
 
-	### 
-	# get overlapping snps, filter both files
-	snp_overlap = np.intersect1d(weights.snpID, Geno.snpID)
+	# 	else:
+	# 		empty_target_ks.append(k)
 
-	if not snp_overlap.size:
-		print('No overlapping test SNPs between weight files and genotype file for TargetID: ' + target + '\n')
-		return None
+	# 	if W_k.empty:
+	# 		empty_target_ks.append(k)
+	# 		continue
 
-	weights = weights[weights.snpID.isin(snp_overlap)].reset_index(drop=True)
-	Geno = Geno[Geno.snpID.isin(snp_overlap)].reset_index(drop=True)
+	# 	## CURRENTLY IGNORES ENSEMBLE VERSION
+	# 	# ## CONSIDER CHECKING IF ('.' in target) and requiring ensemble version if specified in the gene annotation file; otherwise use whatever ensemble version in the weight file
+	# 	# if np.any(W_k.TargetID.str.contains('.')):
+	# 	# 	W_k['TargetID'] = W_k.TargetID.str.split('.', expand=True)[0]
+
+	# 	W_k['snpIDflip'] = tg.get_snpIDs(W_k, flip=True)
+
+	# 	W_k = W_k[np.any(W_k[['snpID','snpIDflip']].isin(Geno.snpID.values), axis=1)].reset_index(drop=True)
+
+
+	# 	# if not in Geno.snpIDs, assumed flipped; if flipped, 1 - MAF and -ES
+	# 	flip = np.where(W_k.snpID.isin(Geno.snpID), True, False)
+
+	# 	if not np.all(flip):
+	# 		# set correct snpID, MAF, ES
+	# 		W_k['snpID'] = np.where(flip, W_k.snpID, W_k.snpIDflip)
+	# 		W_k[MAF(k)] = np.where(flip, W_k[MAF(k)], 1 - W_k[MAF(k)])
+	# 		W_k[ES(k)] = np.where(flip, W_k[ES(k)], -W_k[ES(k)])
+
+	# 	# W_k = W_k[W_k.snpID.isin(Geno.snpID)]
+	# 	W_k = W_k.drop(columns=['CHROM','POS','REF','ALT','TargetID','snpIDflip'])
+
+	# 	if W_k.empty:
+	# 		empty_target_ks.append(k)
+	# 	else: 
+	# 		target_ks.append(k)
+
+	# 	if Weights.empty:
+	# 		Weights = W_k
+	# 	else:
+	# 		Weights = Weights.merge(W_k, how='outer', on=['snpID'])
+
+	# if Weights.empty:
+	# 	print('No cis-eQTL weights with snp overlap in genotype data for target.\n')
+	# 	return None
+
+	empty_target_ks.sort()
+
+	# for wk in wdict:
+	# 	compress_type = 'gzip' if wdict[wk]['path'].endswith('.gz') else None
+
+	# 	weightk_chunks = pd.read_csv(
+	# 		wdict[wk]['path'], 
+	# 		sep='\t', 
+	# 		iterator=True, 
+	# 		chunksize=10000,
+	# 		header=0,
+	# 		compression = compress_type,
+	# 		names=wdict[wk]['names'],
+	# 		usecols=wdict[wk]['cols'],
+	# 		dtype=weight_dtypes)
+
+	# 	weightk = pd.concat([x[x['TargetID'].apply(lambda x:x.startswith(target))] for x in weightk_chunks], ignore_index=True)
+
+	# 	# remove gene versions
+	# 	weightk['TargetID'] = weightk.TargetID.apply(lambda x:x.split('.')[0])
+
+	# 	weightk = tg.optimize_cols(weightk)
+
+	# 	generated_snpID = False
+
+	# 	if 'ID' in weightk.columns:
+	# 		weightk = weightk.rename(columns={'ID':'snpID'})
+
+	# 	if not 'snpID' in weightk.columns:
+	# 		weightk['snpID'] = tg.get_snpIDs(weightk)
+	# 		generated_snpID = True
+
+	# 	snp_overlap = np.intersect1d(weightk.snpID, Geno.snpID)
+
+	# 	if not snp_overlap.size and not generated_snpID:
+	# 		# may be bad ID/snpID column in file
+	# 		weightk['snpID'] = tg.get_snpIDs(weightk)
+	# 		snp_overlap = np.intersect1d(weightk.snpID, Geno.snpID)
+
+	# 	weightk = weightk[weightk.snpID.isin(snp_overlap)].drop_duplicates(['snpID'],keep='first').reset_index(drop=True)
+
+	# 	weightk = weightk.drop(columns=['CHROM','POS','REF','ALT','TargetID'])
+
+	# 	if weightk.empty:
+	# 		empty_target_ks.append(wk)
+
+	# 	else:
+	# 		target_ks.append(wk)
+
+	# 	if weights.empty:
+	# 		weights = weightk
+
+	# 	else:
+	# 		# weights = weights.merge(weightk, how='outer',on=['CHROM','POS','REF','ALT','TargetID','snpID'])
+	# 		weights = weights.merge(weightk, how='outer', on=['snpID'])
+
+	# if weights.empty:
+	# 	print('No cis-eQTL weights for TargetID: ' + target + '\n')
+	# 	return None
+
+	# # weights = weights.drop(columns=['CHROM','POS','REF','ALT','TargetID'])
+
+	# empty_wk_cols = flatten([['ES'+str(k),'MAF'+str(k)] for k in empty_target_ks])
+	# weights[empty_wk_cols] = np.nan
+
+	empty_wk_cols = flatten([[ES(k),MAF(k)] for k in empty_target_ks])
+	Weights[empty_wk_cols] = np.nan
+
+	# get overlapping snps, filter Geno
+	Geno = Geno[Geno.snpID.isin(Weights.snpID.values)].reset_index(drop=True)
+
+	# ### 
+	# # get overlapping snps, filter both files
+	# snp_overlap = np.intersect1d(weights.snpID, Geno.snpID)
+
+	# if not snp_overlap.size:
+	# 	print('No overlapping test SNPs between weight files and genotype file for TargetID: ' + target + '\n')
+	# 	return None
+
+	# weights = weights[weights.snpID.isin(snp_overlap)].reset_index(drop=True)
+	# Geno = Geno[Geno.snpID.isin(snp_overlap)].reset_index(drop=True)
 	### 
 
 	# finish processing genofile
@@ -611,6 +717,26 @@ def thread_process(num):
 	# center data
 	Geno = tg.center(Geno, sampleID)
 
+	# merge datasets (inner in case missing snpIDs after filtering)
+	Train = Geno.merge(Weights,
+		left_on='snpID', 
+		right_on='snpID', 
+		how='inner').set_index('snpID')
+
+	# filter by MAF diff - if an MAF# differs too much, set ESk to nan
+	for k in range(Kweights):
+		maf_diff = np.abs(Train[MAF(k)].values - Train['MAF'].values)
+		Train.loc[maf_diff > args.maf_diff, ES(k)] = np.nan
+
+	# filter out snps where all weights are nan
+	all_missing_weights = Train[ES_cols].count(axis=1) == 0
+	Train = Train[~all_missing_weights]
+	n_snps = Train.index.size
+
+	if not n_snps:
+		print('All SNP MAFs for training data and testing data differ by a magnitude greater than ' + str(args.maf_diff) + ' for TargetID: ' + target + '\n')
+		return None
+
 	### 
 	# get overlapping snps after potential filtering, filter both files
 	# snp_overlap = np.intersect1d(weights.snpID, Geno.snpID)
@@ -623,25 +749,25 @@ def thread_process(num):
 	# Geno = Geno[Geno.snpID.isin(snp_overlap)].reset_index(drop=True)
 	# ### 
 
-	# merge datasets (inner in case missing snpIDs after filtering)
-	Train = Geno.merge(weights,
-		left_on='snpID', 
-		right_on='snpID', 
-		how='inner').set_index('snpID')
+	# # merge datasets (inner in case missing snpIDs after filtering)
+	# Train = Geno.merge(weights,
+	# 	left_on='snpID', 
+	# 	right_on='snpID', 
+	# 	how='inner').set_index('snpID')
 
-	# filter by MAF diff - if an MAF# differs too much, set ES# to nan
-	for k in range(Kweights):
-		exceeds_maf_diff = np.abs(Train[MAF_cols[k]].values-Train['MAF'].values) > args.maf_diff
-		Train.loc[exceeds_maf_diff, ES_cols[k]] = np.nan
+	# # filter by MAF diff - if an MAF# differs too much, set ES# to nan
+	# for k in range(Kweights):
+	# 	exceeds_maf_diff = np.abs(Train[MAF_cols[k]].values-Train['MAF'].values) > args.maf_diff
+	# 	Train.loc[exceeds_maf_diff, ES_cols[k]] = np.nan
 
-	# filter out snps where all weights are nan
-	all_missing_weights = Train[ES_cols].count(axis=1) == 0
-	Train = Train[~all_missing_weights]
-	n_snps = Train.index.size
+	# # filter out snps where all weights are nan
+	# all_missing_weights = Train[ES_cols].count(axis=1) == 0
+	# Train = Train[~all_missing_weights]
+	# n_snps = Train.index.size
 
-	if not n_snps:
-		print('All SNP MAFs for training data and testing data differ by a magnitude greater than ' + str(args.maf_diff) + ' for TargetID: ' + target + '\n')
-		return None
+	# if not n_snps:
+	# 	print('All SNP MAFs for training data and testing data differ by a magnitude greater than ' + str(args.maf_diff) + ' for TargetID: ' + target + '\n')
+	# 	return None
 
 	# do stacked regression
 	print('Performing Stacked Regression.')
@@ -655,12 +781,12 @@ def thread_process(num):
 		# only one weight model with usable data, don't need to do stacking
 		# 'Only Trained model ' + str(int(target_ks[0])) + ' has usable weights for TargetID: ' + target + '\n'
 		print('Only Trained model ' + str(target_ks[0]) + ' has usable weights for TargetID: ' + target + '\n')
-		reg = WeightEstimator(Train[ES_cols[target_ks[0]]]).fit(X, Y)
+		reg = WeightEstimator(Train[ES(target_ks[0])]).fit(X, Y)
 		reg.zetas_ = [1]
 
 	else:
 		# do stacking
-		weight_estimators = [(str(k), WeightEstimator(Train[ES_cols[k]])) for k in target_ks]
+		weight_estimators = [(str(k), WeightEstimator(Train[ES(k)])) for k in target_ks]
 		reg = WeightStackingRegressor(estimators=weight_estimators).fit(X, Y)
 
 	# 5-FOLD CROSS-VALIDATION
@@ -681,18 +807,18 @@ def thread_process(num):
 	wk_out_vals = reg.final_est_out_vals(X, Y, ks=target_ks, K=Kweights)
 
 	# output Trained weights
-	out_weights = Train[['CHROM','POS','REF','ALT','MAF','p_HWE']].copy()
-	out_weights['ID'] = out_weights.index
-	out_weights['TargetID'] = target
-	out_weights['ES'] = np.dot(Train[ES_cols].fillna(0), zetas)
+	Weight_Out = Train[['CHROM','POS','REF','ALT','MAF','p_HWE']].copy()
+	Weight_Out['ID'] = Weight_Out.index
+	Weight_Out['TargetID'] = target
+	Weight_Out['ES'] = np.dot(Train[ES_cols].fillna(0), zetas)
 
 	# filter for non-zero effect size
-	out_weights = out_weights[out_weights['ES']!=0]
+	Weight_Out = Weight_Out[Weight_Out['ES'] != 0]
 
 	# reorder columns
-	out_weights = out_weights[out_weight_cols]
+	Weight_Out = Weight_Out[out_weight_cols]
 
-	out_weights.to_csv(
+	Weight_Out.to_csv(
 		out_weight_path,
 		sep='\t',
 		header=None,
@@ -700,18 +826,18 @@ def thread_process(num):
 		mode='a')
 
 	# output training info
-	Info = Expr[exp_info_cols].copy()
+	Info = Expr[['CHROM','GeneStart','GeneEnd','TargetID','GeneName']].copy()
 	Info['sample_size'] = Y.size
 	Info['ST_N_SNP'] = n_snps
-	Info['ST_N_EFFECT_SNP'] = out_weights.ES.size
+	Info['ST_N_EFFECT_SNP'] = Weight_Out.ES.size
 	Info['ST_CVR2'] = avg_r2_cv
 	Info['ST_R2'] = stacked_r2
 	Info['ST_PVAL'] = stacked_pval
 
-	Info[zeta_out_cols] = zetas
-	Info[wk_out_info_cols] = wk_out_vals
+	Info[info_zeta_cols] = zetas
+	Info[info_wk_cols] = wk_out_vals
 
-	Info = Info.astype(wk_out_info_dtypes)
+	Info = Info.astype(info_wk_dtypes)
 
 	Info.to_csv(
 		out_info_path,

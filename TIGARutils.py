@@ -365,13 +365,12 @@ def read_gene_annot_exp(chrm=None, geneexp_path=None, annot_path=None, cols=['CH
 
 
 ## line filter functions for read_tabix
-
-def filter_vcf_line(line: bytes, bformat, col_inds, split_multi=True):
+def filter_vcf_line(line: bytes, bformat, col_inds, split_multi_GT=True):
 	# split line into list
 	row = line.split(b'\t')
 	# get index of data format
 	data_fmts = row[8].split(b':')
-	# may be multiallelic; only first alt allele will be used unless split_multi; later data with bad values will be filtered out
+	# may be multiallelic; only first alt allele will be used unless split_multi_GT; later data with bad values can be filtered out
 	alt_alleles = row[4].split(b',')
 	row[4] = alt_alleles[0]
 	# filter sample columns to include only data in desired format; sampleIDs start at file column index 9; in new row sampleIDs now start at 4, ALT is column 3
@@ -381,8 +380,8 @@ def filter_vcf_line(line: bytes, bformat, col_inds, split_multi=True):
 		row = [row[x] if x <= 8 else row[x].split(b':')[data_ind] for x in col_inds]
 	else:
 		row = [row[x] for x in col_inds]
-	# turn multi-allelic lines into multiple biallelic lines
-	if split_multi & (len(alt_alleles) > 1):
+	# turn multi-allelic lines into multiple biallelic lines; works for GT only
+	if split_multi_GT & (len(alt_alleles) > 1):
 		sample_str = b'\t'.join(row[4:])
 		line = bytearray()
 		for j in range(1, len(alt_alleles) + 1):
@@ -403,6 +402,29 @@ def filter_vcf_line(line: bytes, bformat, col_inds, split_multi=True):
 		# append linebreak if needed
 		line += b'' if line.endswith(b'\n') else b'\n'
 	return line
+
+
+# def filter_vcf_DS_line(line: bytes, bformat, col_inds):
+# 	# split line into list
+# 	row = line.split(b'\t')
+# 	# get index of data format
+# 	data_fmts = row[8].split(b':')
+# 	# may be multiallelic; only first alt allele will be used unless split_multi_GT; later data with bad values can be filtered out
+# 	alt_alleles = row[4].split(b',')
+# 	row[4] = alt_alleles[0]
+# 	# filter sample columns to include only data in desired format; sampleIDs start at file column index 9; in new row sampleIDs now start at 4, ALT is column 3
+# 	if (len(data_fmts) > 1):
+# 		data_ind = data_fmts.index(bformat)
+# 		row[8] = bformat
+# 		row = [row[x] if x <= 8 else row[x].split(b':')[data_ind] for x in col_inds]
+# 	else:
+# 		row = [row[x] for x in col_inds]
+# 	# row to bytestring
+# 	line = b'\t'.join(row)
+# 	# append linebreak if needed
+# 	line += b'' if line.endswith(b'\n') else b'\n'
+# 	return line
+
 
 def filter_weight_line(line: bytes, btarget: bytes, target_ind, col_inds):
 	# split line into list
@@ -435,7 +457,7 @@ def filter_other_line(line: bytes, col_inds):
 # 		return b''
 
 
-def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtype, genofile_type=None, data_format=None, target_ind=5, target=None, weight_threshold=0, **kwargs):
+def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtype, genofile_type=None, data_format=None, target_ind=5, target=None, weight_threshold=0, raise_error=True, **kwargs):
 
 	# subprocess command
 	command_str = ' '.join(['tabix', path, chrm + ':' + start + '-' + end])
@@ -452,7 +474,7 @@ def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtyp
 	# set correct filter function by file type
 	if genofile_type == 'vcf':
 		bformat = str.encode(data_format)
-		filter_line = functools.partial(filter_vcf_line, bformat=bformat, col_inds=col_inds)
+		filter_line = functools.partial(filter_vcf_line, bformat=bformat, col_inds=col_inds, split_multi_GT=data_format == 'GT')
 	elif genofile_type == 'weight':
 		btarget = str.encode(target)
 		filter_line = functools.partial(filter_weight_line, btarget=btarget, target_ind=target_ind, col_inds=col_inds)
@@ -469,18 +491,31 @@ def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtyp
 	for line in proc.stdout:
 		proc_out += filter_line(line)
 
-	if not proc_out:
+	if not proc_out and raise_error:
 		print('No tabix data for target.\n')
 		raise NoTargetDataError
 
 	# read data into dataframe
+	if data_format == 'DS':
+		nanvals = ['.']
+	elif data_format == 'GT':
+		nanvals = ['.|.','./.']
+	else: 
+		nanvals = []
+		
 	df = pd.read_csv(
 		StringIO(proc_out.decode('utf-8')),
 		sep='\t',
 		low_memory=False,
 		header=None,
 		names=cols,
-		dtype=dtype)
+		dtype=dtype,
+		na_values=nanvals,
+		keep_default_na=True)
+
+	# filter out rows where all sampleID values are nan
+	if len(sampleID):
+		df = df[df[sampleID].count(axis=1) != 0].reset_index(drop=True)
 
 	df = optimize_cols(df)
 
@@ -503,7 +538,7 @@ def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtyp
 			# filter out weights below threshold
 			df = df[operator.gt(np.abs(df['ES']), weight_threshold)].reset_index(drop=True)
 
-			if df.empty:
+			if df.empty and raise_error:
 				print('No test SNPs with cis-eQTL weights with magnitude that exceeds specified weight threshold for TargetID: ' + target + '.\n')
 				raise NoTargetDataError
 
@@ -517,7 +552,7 @@ def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtyp
 	if (data_format == 'GT') or (data_format == 'DS'):
 		df = reformat_sample_vals(df, data_format, sampleID)
 
-	if df.empty:
+	if df.empty and raise_error:
 		print('No valid tabix data for target.\n')
 		raise NoTargetDataError
 
@@ -811,6 +846,28 @@ def MCOV_cols_dtype(file_cols, add_cols=[], drop_cols=[], get_id=True, **kwargs)
 		add_cols=add_cols, drop_cols=drop_cols, 
 		get_id=get_id)
 
+def weight_k_cols_dtype(file_cols, add_cols=[], drop_cols=[], add_dtype_dict={},get_id=False, ret_dict=True, ind_namekey=True, **kwargs):
+	return get_cols_dtype(file_cols, 
+		cols=['CHROM','POS','REF','ALT','TargetID'], 
+		add_cols=add_cols, drop_cols=drop_cols, 
+		get_id=get_id, add_dtype_dict=add_dtype_dict, ret_dict=ret_dict, ind_namekey=ind_namekey)
+
+
+def weight_k_files_info(w_paths, chrm, weight_threshold=0, add_cols=[], drop_cols=['ID'], **kwargs):
+	file_cols = {k:get_header(w_paths[k], rename={'ES':'ES'+str(k),'MAF':'MAF'+str(k)}, zipped=True) for k in range(len(w_paths))}
+	return {k: {'path': w_paths[k],
+		'chrm': chrm,
+		'sampleID': [], 
+		'target_ind': file_cols[k].index('TargetID'), 
+		'data_format': 'weight', 
+		'genofile_type': 'weight', 
+		'weight_threshold': weight_threshold,
+		**weight_k_cols_dtype(
+			file_cols[k], 
+			cols = ['CHROM','POS','REF','ALT','TargetID'],
+			add_cols=['ES'+str(k),'MAF'+str(k)],
+			add_dtype_dict={'ES'+str(k):np.float64,'MAF'+str(k):np.float64})} for k in range(len(w_paths))}
+
 
 # get header of ld file, get indices of columns to read in
 def get_ld_cols(path):
@@ -968,7 +1025,7 @@ def get_snpIDs(df: pd.DataFrame, flip=False):
 	if flip:
 		return [':'.join(i) for i in zip(chrms,pos,alt,ref)]
 	else:
-		return [':'.join(i) for i in zip(chrom,pos,ref,alt)]
+		return [':'.join(i) for i in zip(chrms,pos,ref,alt)]
 
 
 # Decrease memory by downcasting 'CHROM' column to integer, integer and float columns to minimum size that will not lose info
@@ -1010,6 +1067,7 @@ def reformat_sample_vals(df: pd.DataFrame, data_format, sampleID):
 		vals[(vals=='.|.')|(vals=='./.')] = np.nan
 	elif data_format=='DS':
 		vals[(vals=='.')] = np.nan
+		vals[(vals=='0.00.')] = 0
 	vals = vals.astype(np.float32)
 	df = pd.concat([df.drop(columns=sampleID), pd.DataFrame(vals, columns=sampleID)], axis=1)
 	return df
