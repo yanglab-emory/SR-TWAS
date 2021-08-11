@@ -32,7 +32,7 @@
 	- [sklearn](https://scikit-learn.org/stable/)
 	- [statsmodels](https://www.statsmodels.org/stable/index.html)
 
-	### 2. Make files executable
+### 2. Make files executable
 - Make `*.sh` files in the **SR-TWAS** directory executable
 ```bash
 TIGAR_dir="/home/jyang/GIT/SR-TWAS"
