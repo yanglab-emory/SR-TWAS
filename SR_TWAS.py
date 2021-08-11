@@ -523,7 +523,7 @@ def thread_process(num):
 	if len(target_ks) == 1:
 		# only one weight model with usable data, don't need to do stacking
 		# print('Only Trained model ' + str(target_ks[0]) + ' has usable weights for TargetID: ' + target + '\n')
-		print('Only Trained model ' + str(target_ks[0]) + ' has usable weights for target.')
+		print('Only trained model ' + str(target_ks[0]) + ' has usable weights for target.')
 		reg = WeightEstimator(Train[ES(target_ks[0])]).fit(X, Y)
 		reg.zetas_ = [1]
 
