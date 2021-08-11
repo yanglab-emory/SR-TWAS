@@ -5,30 +5,18 @@
 ---
 
 - [Software Setup](#software-setup)
-
 - [Input Files](#input-files)
-
 	- [Validation Data](#validation-data)
-
 		- [1. Genotype File](#1-genotype-file)
-
-			- [VCF](#vcf-variant-call-format)
-			- [Dosage](#dosage-file)
-
+<!-- 			- [VCF](#vcf-variant-call-format)
+			- [Dosage](#dosage-file) -->
 		- [2. SampleID File](#2-sampleid-file)
-
 		- [3. Gene Expression File](#3-gene-expression-file)
-
 	- [Weight (eQTL effect size) Files](#weight-eqtl-effect-size-files)
-
 - [Example Usage](#example-usage)
-
 	- [Arguments](#arguments)
-
 	- [Example Command](#example-command)
-
 	- [Output](#output)
-
 
 ---
 
