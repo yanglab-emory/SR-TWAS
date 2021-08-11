@@ -8,7 +8,7 @@
 
 - [Input Files](#input-files)
 
-	-[Validation Data](#validation-data)
+	- [Validation Data](#validation-data)
 
 		- [1. Genotype File](#1-genotype-file)
 
