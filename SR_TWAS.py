@@ -303,7 +303,7 @@ Genotype file used for training is type: {genofile_type}
 Genotype data format: {data_format}
 Gene training region SNP inclusion window: +-{window}
 Excluding SNPs if missing rate exceeds: {missing_rate}
-Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |{maf_diff}|
+{maf_diff_str1}xcluding SNPs matched between eQTL weight file and training genotype file {maf_diff_str2}
 HWE p-value threshold for SNP inclusion: {hwe}
 {cvR2_str1} Stacked Regression model by 5-fold cross validation{cvR2_str2}.
 Number of threads: {thread}
@@ -314,10 +314,44 @@ Output trained weights file: {out_weight}
 	**args.__dict__,
 	cvR2_str1 = {0:'Skipping evaluation of', 1:'Evaluating'}[args.cvR2],
 	cvR2_str2 = {0:'', 1:' with inclusion threshold Avg.CVR2 >' + str(args.cvR2_threshold)}[args.cvR2],
+	maf_diff_str1 = {0:'Not e', 1:'E'},
+	maf_diff_str2 = {0:'by MAF difference.', 1:'if MAF difference exceeds: |' + str(args.maf_diff) + '|'},
 	w_paths_str = '\n  '.join(args.w_paths),
 	K = Kweights,
 	out_info = out_info_path,
 	out_weight = out_weight_path))
+
+
+# print(
+# '''********************************
+# Input Arguments:
+# Gene Annotation and Expression file: {geneexp_path}
+# Training sampleID file: {sampleid_path}
+# Chromosome: {chrm}
+# K (number of trained input models): {K}
+# cis-eQTL weight files:{w_paths_str}
+# Training genotype file: {geno_path}
+# Genotype file used for training is type: {genofile_type}
+# Genotype data format: {data_format}
+# Gene training region SNP inclusion window: +-{window}
+# Excluding SNPs if missing rate exceeds: {missing_rate}
+# {maf_diff_str}
+# Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |{maf_diff}|
+# HWE p-value threshold for SNP inclusion: {hwe}
+# {cvR2_str1} Stacked Regression model by 5-fold cross validation{cvR2_str2}.
+# Number of threads: {thread}
+# Output directory: {out_dir}
+# Output training info file: {out_info}
+# Output trained weights file: {out_weight}
+# ********************************'''.format(
+# 	**args.__dict__,
+# 	cvR2_str1 = {0:'Skipping evaluation of', 1:'Evaluating'}[args.cvR2],
+# 	cvR2_str2 = {0:'', 1:' with inclusion threshold Avg.CVR2 >' + str(args.cvR2_threshold)}[args.cvR2],
+# 	maf_diff_str = {0:'', 1:'Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |' + str(args.maf_diff) + '|'},
+# 	w_paths_str = '\n  '.join(args.w_paths),
+# 	K = Kweights,
+# 	out_info = out_info_path,
+# 	out_weight = out_weight_path))
 
 # tg.print_args(args.__dict__)
 
@@ -412,7 +446,8 @@ def thread_process(num):
 			if not np.all(flip):
 				# set correct snpID, MAF, ES
 				W_k['snpID'] = np.where(flip, W_k.snpID, W_k.snpIDflip)
-				W_k[MAF(k)] = np.where(flip, W_k[MAF(k)], 1 - W_k[MAF(k)])
+				if args.maf_diff:
+					W_k[MAF(k)] = np.where(flip, W_k[MAF(k)], 1 - W_k[MAF(k)])
 				W_k[ES(k)] = np.where(flip, W_k[ES(k)], -W_k[ES(k)])
 
 			W_k = W_k.drop(columns=['CHROM','POS','REF','ALT','TargetID','snpIDflip'])
@@ -437,7 +472,10 @@ def thread_process(num):
 	empty_target_ks.sort()
 
 	# add nan columns for weight files without data
-	empty_wk_cols = flatten([[ES(k),MAF(k)] for k in empty_target_ks])
+	if args.maf_diff:
+		empty_wk_cols = flatten([[ES(k),MAF(k)] for k in empty_target_ks])
+	else: 
+		empty_wk_cols = [ES(k) for k in empty_target_ks]
 	Weights[empty_wk_cols] = np.nan
 
 	# get overlapping snps, filter Geno
@@ -462,9 +500,10 @@ def thread_process(num):
 		how='inner').set_index('snpID')
 
 	# filter by MAF diff - if an MAF# differs too much, set ESk to nan
-	for k in range(Kweights):
-		maf_diff = np.abs(Train[MAF(k)].values - Train['MAF'].values)
-		Train.loc[maf_diff > args.maf_diff, ES(k)] = np.nan
+	if args.maf_diff:
+		for k in range(Kweights):
+			maf_diff = np.abs(Train[MAF(k)].values - Train['MAF'].values)
+			Train.loc[maf_diff > args.maf_diff, ES(k)] = np.nan
 
 	# filter out snps where all weights are nan
 	all_missing_weights = Train[ES_cols].count(axis=1) == 0
@@ -472,7 +511,8 @@ def thread_process(num):
 	n_snps = Train.index.size
 
 	if not n_snps:
-		print('All SNP MAFs for training data and testing data differ by a magnitude greater than ' + str(args.maf_diff) + ' for TargetID: ' + target + '\n')
+		print('No valid SNPs.')
+		# print('All SNP MAFs for training data and testing data differ by a magnitude greater than ' + str(args.maf_diff) + '.\n')
 		return None
 
 	# do stacked regression

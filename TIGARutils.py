@@ -853,20 +853,35 @@ def weight_k_cols_dtype(file_cols, add_cols=[], drop_cols=[], add_dtype_dict={},
 		get_id=get_id, add_dtype_dict=add_dtype_dict, ret_dict=ret_dict, ind_namekey=ind_namekey)
 
 
-def weight_k_files_info(w_paths, chrm, weight_threshold=0, add_cols=[], drop_cols=['ID'], **kwargs):
-	file_cols = {k:get_header(w_paths[k], rename={'ES':'ES'+str(k),'MAF':'MAF'+str(k)}, zipped=True) for k in range(len(w_paths))}
-	return {k: {'path': w_paths[k],
-		'chrm': chrm,
-		'sampleID': [], 
-		'target_ind': file_cols[k].index('TargetID'), 
-		'data_format': 'weight', 
-		'genofile_type': 'weight', 
-		'weight_threshold': weight_threshold,
-		**weight_k_cols_dtype(
-			file_cols[k], 
-			cols = ['CHROM','POS','REF','ALT','TargetID'],
-			add_cols=['ES'+str(k),'MAF'+str(k)],
-			add_dtype_dict={'ES'+str(k):np.float64,'MAF'+str(k):np.float64})} for k in range(len(w_paths))}
+def weight_k_files_info(w_paths, chrm, weight_threshold=0, maf_diff=0, add_cols=[], drop_cols=['ID'], **kwargs):
+	if maf_diff:
+		file_cols = {k:get_header(w_paths[k], rename={'ES':'ES'+str(k),'MAF':'MAF'+str(k)}, zipped=True) for k in range(len(w_paths))}
+		return {k: {'path': w_paths[k],
+			'chrm': chrm,
+			'sampleID': [], 
+			'target_ind': file_cols[k].index('TargetID'), 
+			'data_format': 'weight', 
+			'genofile_type': 'weight', 
+			'weight_threshold': weight_threshold,
+			**weight_k_cols_dtype(
+				file_cols[k], 
+				cols = ['CHROM','POS','REF','ALT','TargetID'],
+				add_cols=['ES'+str(k),'MAF'+str(k)],
+				add_dtype_dict={'ES'+str(k):np.float64,'MAF'+str(k):np.float64})} for k in range(len(w_paths))}
+	else:
+		file_cols = {k:get_header(w_paths[k], rename={'ES':'ES'+str(k)}, zipped=True) for k in range(len(w_paths))}
+		return {k: {'path': w_paths[k],
+			'chrm': chrm,
+			'sampleID': [], 
+			'target_ind': file_cols[k].index('TargetID'), 
+			'data_format': 'weight', 
+			'genofile_type': 'weight', 
+			'weight_threshold': weight_threshold,
+			**weight_k_cols_dtype(
+				file_cols[k], 
+				cols = ['CHROM','POS','REF','ALT','TargetID'],
+				add_cols=['ES'+str(k)],
+				add_dtype_dict={'ES'+str(k):np.float64})} for k in range(len(w_paths))}
 
 
 # get header of ld file, get indices of columns to read in

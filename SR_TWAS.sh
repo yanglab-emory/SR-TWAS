@@ -12,13 +12,16 @@
 # -- "$@"
 
 
-weights=()
+weights=( )
 
 while [ $# -gt 0 ]; do
     if [[ $1 == *"--"* ]]; then
         v="${1/--/}"
         if [[ $v == "weights" ]]; then
             while [[ $2 != *"--"* ]]; do
+                if [[ $2 == "" ]]; then 
+                    break;
+                fi
                 weights+=("$2")
                 shift
             done
@@ -28,7 +31,6 @@ while [ $# -gt 0 ]; do
     fi
     shift
 done
-
 
 # while [ $# -gt 0 ]; do
 
@@ -87,7 +89,7 @@ cvR2=${cvR2:-1}
 cvR2_threshold=${cvR2_threshold:-0.005}
 format=${format:-"GT"}
 hwe=${hwe:-0.00001}
-maf=${maf:-0.01}
+maf_diff=${maf_diff:-0}
 missing_rate=${missing_rate:-0.2}
 sub_dir=${sub_dir:-1}
 thread=${thread:-1}
