@@ -186,7 +186,7 @@ rm ${temp}
 if [ ! -f "${temp}" ] ; then
     echo "Sort successful. Bgzip/tabix-ing."
     bgzip -f ${weight} && \
-    tabix -f -b 2 -e 2 -S 1 ${weight}.gz
+    tabix -f -b2 -e2 -S1 ${weight}.gz
 
 else
     echo "Sort failed; Unable to bgzip/tabix output weights file."

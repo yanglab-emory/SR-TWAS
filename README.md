@@ -35,8 +35,8 @@
 ### 2. Make files executable
 - Make `*.sh` files in the **SR-TWAS** directory executable
 ```bash
-TIGAR_dir="/home/jyang/GIT/SR-TWAS"
-chmod 755 ${TIGAR_dir}/*.sh 
+SR_TWAS_dir="/home/jyang/GIT/SR-TWAS"
+chmod 755 ${SR_TWAS_dir}/*.sh 
 ```
 
 ## Input Files
@@ -100,7 +100,10 @@ Example input files provided under `./ExampleData/` are generated artificially. 
 |:-----:|:---:|:---:|:---:|:---------------:|:----:|:---:|
 |   1   | 100 |  C  |  T  |     ENSG0000    |  0.2 | 0.02 |
 
-- Contain cis-eQTL effect sizes (i.e., SNP weights) estimated from reference data for TWAS. The output `*_eQTLweights.txt` file by `./TIGAR_Model_Train.sh` can be used here as the variant weight file.
+- Weight files contain cis-eQTL effect sizes estimated from reference data for TWAS.
+- SR-TWAS requires that _at least_ two weight files be provided.
+- Model training output `*_eQTLweights.txt` files obtained from the [TIGAR](https://github.com/yanglab-emory/SR-TWAS) tool may be used directly.
+- Example bgzip/tabix command for a user-generated weight file: `bgzip -f my_eQTLweights.txt && tabix -f -b2 -e2 -S1 my_eQTLweights.txt.gz`.
 - First 5 columns must be be: *Chromosome number, Base pair position, Reference allele, Alternative allele, and Target gene ID*. 
 - Must contain a column named `ES` to denote variant weights (estimated eQTL effect sizes from a reference dataset) with for the gene (TargetID).
 - The MAF column is only required if using a non-zero value of `--maf_diff` to exclude exclude eQTL weights obtained from data in which the absolute value between the MAF substantially different from that of the validation data.
@@ -108,7 +111,6 @@ Example input files provided under `./ExampleData/` are generated artificially. 
 - Variants will be matched by their unique `CHROM:POS:REF:ALT` snpID
 - Example: `./ExampleData/eQTLweights.txt`
 - Argument: `--weights`
-- Model training output from [TIGAR](https://github.com/yanglab-emory/SR-TWAS) may be used directly.
 
 
 ## Example Usage 
@@ -150,9 +152,9 @@ train_sampleID="${SR_TWAS_dir}/ExampleData/train_sampleID.txt"
 genofile="${SR_TWAS_dir}/ExampleData/genotype.vcf.gz"
 out_dir="${SR_TWAS_dir}/ExampleData/output"
 
-weight0="${SR_TWAS_dir}/ExampleData/.txt.gz"
-weight1="${SR_TWAS_dir}/ExampleData/.txt.gz"
-weight2="${SR_TWAS_dir}/ExampleData/.txt.gz"
+weight0="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort0_eQTLweights.txt.gz"
+weight1="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort1_eQTLweights.txt.gz"
+weight2="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort2_eQTLweights.txt.gz"
 
 ${SR_TWAS_dir}/SR_TWAS.sh \
 --gene_exp ${gene_exp} \
@@ -172,8 +174,6 @@ ${SR_TWAS_dir}/SR_TWAS.sh \
 
 ### Output
 - `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_eQTLweights.txt` is the file storing all eQTL effect sizes (`ES`) estimated from the gene expression imputation model per gene (`TargetID`)
-- `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_GeneInfo.txt` is the file storing information about the fitted gene expression imputation model per gene (per row), including gene annotation (`CHROM GeneStart GeneEnd TargetID GeneName`), sample size, number of SNPs used in the model training (`n_snp`), number of SNPs with non-zero eQTL effect sizes (`n_effect_snp`), imputation R2 by 5-fold cross validation (`CVR2`), imputation R2 using all given training samples (`TrainR2`)
+- `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_GeneInfo.txt` is the file storing information about the fitted gene expression imputation model per gene (per row), including gene annotation (`CHROM GeneStart GeneEnd TargetID GeneName`), sample size (`sample_size`), number of SNPs used in the model training (`N_SNP`), number of SNPs with non-zero eQTL effect sizes (`N_EFFECT_SNP`), imputation R2 by 5-fold cross validation (`CVR2`), imputation R2 using all given training samples (`R2`), p-value of the training R2 (`PVAL`), and the zeta weight used for each component weight model (`Z0`,`Z1`,...), and 4 columns for each component weight model describing performance on the validation data (`W0_N_SNP`,`W0_CVR2`,`W0_R2`,`W0_PVAL`,`W1_N_SNP`,`W1_CVR2`,`W1_R2`,`W1_PVAL`,...)
 - `${out_dir}/logs/CHR${chr}_SR_train_log.txt` is the file storing all log messages for model training.
-
-
 

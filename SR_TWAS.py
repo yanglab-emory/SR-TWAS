@@ -83,6 +83,9 @@ parser.add_argument('--maf_diff', type=float)
 # p-value for HW test
 parser.add_argument('--hwe', type=float)
 
+# # naive method? no stacking weights; just use average
+# parser.add_argument('--naive', type=int)
+
 # output dir
 parser.add_argument('--out_dir', type=str)
 
@@ -96,7 +99,7 @@ sys.path.append(args.SR_TWAS_dir)
 ##########################
 import TIGARutils as tg
 
-tg.print_args(args)
+# tg.print_args(args)
 
 def ES(k):
 	return 'ES'+str(k)
@@ -146,7 +149,7 @@ class WeightEstimator(BaseEstimator):
 		return self
 
 	def predict(self, X):
-		return np.dot(X[self.snpID], self.coef_)
+		return np.dot(X.loc[:,~X.columns.duplicated()][self.snpID], self.coef_)
 
 	def score(self, X, y):
 		return get_r2(y, self.predict(X))
@@ -225,6 +228,24 @@ class ZetasEstimator(BaseEstimator):
 	def score(self, X, y):
 		return get_r2(y, self.predict(X))
 
+# # final estimator for stacking regressor if args.naive
+# class NaiveEstimator(BaseEstimator):
+# 	_estimator_type = 'regressor'
+
+# 	def __init__(self, min_method=None, tol=None):
+# 		super().__init__()
+
+# 	def fit(self, X, y, sample_weights=None):
+# 		K = np.shape(X)[1]
+# 		self.coef_ = np.full(K, 1/K)
+# 		return self
+
+# 	def predict(self, X):
+# 		return np.dot(X, self.coef_)
+
+# 	def score(self, X, y):
+# 		return get_r2(y, self.predict(X))
+
 # stacking regressor
 class WeightStackingRegressor(StackingRegressor):
 	def __init__(self, estimators, final_estimator=ZetasEstimator(), *, cv=None,
@@ -282,11 +303,10 @@ elif args.genofile_type == 'dosage':
 else:
 	raise SystemExit('Please specify the type input genotype file type (--genofile_type) as either "vcf" or "dosage".\n')
 
-# out_weight_path = args.out_dir + '/temp_CHR' + args.chrm + '_stacked_eQTLweights.txt'
-# out_info_path = args.out_dir + '/CHR' + args.chrm + '_StackedTrain_Info.txt'
-
 out_weight_path = args.out_dir + '/temp_' + args.out_weight_file
 out_info_path = args.out_dir + '/' + args.out_info_file
+
+do_maf_diff = 0 if not args.maf_diff else 1
 
 #############################################################
 # Print input arguments to log
@@ -314,45 +334,20 @@ Output trained weights file: {out_weight}
 	**args.__dict__,
 	cvR2_str1 = {0:'Skipping evaluation of', 1:'Evaluating'}[args.cvR2],
 	cvR2_str2 = {0:'', 1:' with inclusion threshold Avg.CVR2 >' + str(args.cvR2_threshold)}[args.cvR2],
-	maf_diff_str1 = {0:'Not e', 1:'E'},
-	maf_diff_str2 = {0:'by MAF difference.', 1:'if MAF difference exceeds: |' + str(args.maf_diff) + '|'},
+	maf_diff_str1 = {0:'Not e', 1:'E'}[do_maf_diff],
+	maf_diff_str2 = {0:'by MAF difference.', 1:'if MAF difference exceeds: |' + str(args.maf_diff) + '|'}[do_maf_diff],
 	w_paths_str = '\n  '.join(args.w_paths),
 	K = Kweights,
 	out_info = out_info_path,
 	out_weight = out_weight_path))
 
+# sr_naive_str1 = {0:'P', 1:'Not p'}[args.naive]
 
-# print(
-# '''********************************
-# Input Arguments:
-# Gene Annotation and Expression file: {geneexp_path}
-# Training sampleID file: {sampleid_path}
-# Chromosome: {chrm}
-# K (number of trained input models): {K}
-# cis-eQTL weight files:{w_paths_str}
-# Training genotype file: {geno_path}
-# Genotype file used for training is type: {genofile_type}
-# Genotype data format: {data_format}
-# Gene training region SNP inclusion window: +-{window}
-# Excluding SNPs if missing rate exceeds: {missing_rate}
-# {maf_diff_str}
-# Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |{maf_diff}|
-# HWE p-value threshold for SNP inclusion: {hwe}
-# {cvR2_str1} Stacked Regression model by 5-fold cross validation{cvR2_str2}.
-# Number of threads: {thread}
-# Output directory: {out_dir}
-# Output training info file: {out_info}
-# Output trained weights file: {out_weight}
-# ********************************'''.format(
-# 	**args.__dict__,
-# 	cvR2_str1 = {0:'Skipping evaluation of', 1:'Evaluating'}[args.cvR2],
-# 	cvR2_str2 = {0:'', 1:' with inclusion threshold Avg.CVR2 >' + str(args.cvR2_threshold)}[args.cvR2],
-# 	maf_diff_str = {0:'', 1:'Excluding SNPs matched between eQTL weight file and training genotype file if MAF difference exceeds: |' + str(args.maf_diff) + '|'},
-# 	w_paths_str = '\n  '.join(args.w_paths),
-# 	K = Kweights,
-# 	out_info = out_info_path,
-# 	out_weight = out_weight_path))
+# sr_naive_str2 = {0:'.', 1: '; using naive approach '}[args.naive]
 
+# erforming Stacked Regression to form optimal combinations of weights
+
+# {0:'Performing Stacked Regression to form optimal combinations of weights', 1:'Not perfUsing naive'}
 # tg.print_args(args.__dict__)
 
 ##########################
@@ -388,7 +383,7 @@ info_wk_cols = list(info_wk_dtypes.keys())
 
 print('Creating file: ' + out_info_path + '\n')
 # out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
-out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','ST_N_SNP','ST_N_EFFECT_SNP','ST_CVR2', 'ST_R2', 'ST_PVAL'] + info_zeta_cols + info_wk_cols
+out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
 
 pd.DataFrame(columns=out_info_cols).to_csv(
 	out_info_path,
@@ -567,15 +562,16 @@ def thread_process(num):
 		header=None,
 		index=None,
 		mode='a')
+	
 
 	# output training info
 	Info = Expr[['CHROM','GeneStart','GeneEnd','TargetID','GeneName']].copy()
 	Info['sample_size'] = Y.size
-	Info['ST_N_SNP'] = n_snps
-	Info['ST_N_EFFECT_SNP'] = Weight_Out.ES.size
-	Info['ST_CVR2'] = avg_r2_cv
-	Info['ST_R2'] = stacked_r2
-	Info['ST_PVAL'] = stacked_pval
+	Info['N_SNP'] = n_snps
+	Info['N_EFFECT_SNP'] = Weight_Out.ES.size
+	Info['CVR2'] = avg_r2_cv
+	Info['R2'] = stacked_r2
+	Info['PVAL'] = stacked_pval
 
 	Info[info_zeta_cols] = zetas
 	Info[info_wk_cols] = wk_out_vals

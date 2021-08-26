@@ -265,6 +265,8 @@ def sampleid_startup(chrm=None, genofile_type=None, data_format=None, sampleid_p
 	if not sampleID.size:
 		raise SystemExit('There are no overlapped sample IDs in the input files.')
 
+	print('Running job for ' + str(sampleID.size) + ' matched sampleIDs.')
+
 	## return values
 	return_lst = [sampleID, sampleID.size]
 
@@ -577,7 +579,7 @@ def tabix_query_files(start, end, chrm, geno_path=None, gwas_path=None, w_path=N
 	else:
 
 		if not tabix_query_file(geno_path, reg_str):
-			print('No genotype data for target.')
+			print('No genotype data for target.\n')
 			raise NoTargetDataError
 
 		w_query = [tabix_query_file(path, reg_str) for path in w_paths]
@@ -846,7 +848,7 @@ def MCOV_cols_dtype(file_cols, add_cols=[], drop_cols=[], get_id=True, **kwargs)
 		add_cols=add_cols, drop_cols=drop_cols, 
 		get_id=get_id)
 
-def weight_k_cols_dtype(file_cols, add_cols=[], drop_cols=[], add_dtype_dict={},get_id=False, ret_dict=True, ind_namekey=True, **kwargs):
+def weight_k_cols_dtype(file_cols, add_cols=[], drop_cols=[], add_dtype_dict={}, get_id=False, ret_dict=True, ind_namekey=True, **kwargs):
 	return get_cols_dtype(file_cols, 
 		cols=['CHROM','POS','REF','ALT','TargetID'], 
 		add_cols=add_cols, drop_cols=drop_cols, 
