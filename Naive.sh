@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 #######################################################################
-### Input Arguments for SR-TWAS
+### Input Arguments for Naive method
 #######################################################################
 
 ###############################################################
@@ -97,14 +97,14 @@ weight_threshold=${weight_threshold:-0}
 window=${window:-$((10**6))}
 
 # output file names
-out_prefix=${out_prefix:-CHR${chr}_SR_train}
+out_prefix=${out_prefix:-CHR${chr}_naive_train}
 out_weight_file=${out_weight_file:-${out_prefix}_eQTLweights.txt}
 out_info_file=${out_info_file:-${out_prefix}_GeneInfo.txt}
 log_file=${log_file:-${out_prefix}_log.txt}
 
 # sub directory in out directory
 if [[ "$sub_dir"x == "1"x ]];then
-    out_sub_dir=${out_dir}/SR_CHR${chr}
+    out_sub_dir=${out_dir}/Naive_CHR${chr}
 else
     out_sub_dir=${out_dir}
 fi
@@ -145,7 +145,7 @@ if [[ ! -x  ${SR_TWAS_dir}/SR_TWAS.py ]] ; then
     chmod 755 ${SR_TWAS_dir}/SR_TWAS.py
 fi
 
-python ${SR_TWAS_dir}/SR_TWAS.py \
+python ${SR_TWAS_dir}/Naive.py \
 --chr ${chr} \
 --cvR2 ${cvR2} \
 --cvR2_threshold ${cvR2_threshold} \
@@ -194,6 +194,7 @@ if [ ! -f "${temp}" ] ; then
 else
     echo "Sort failed; Unable to bgzip/tabix output weights file."
 fi
+
 
 
 
