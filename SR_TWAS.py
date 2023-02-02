@@ -38,6 +38,9 @@ parser.add_argument('--SR_TWAS_dir', type=str)
 parser.add_argument('--weights', dest='w_paths', nargs='+', default=[], type=str)
 # ASSUME THESE FILES ARE *TABIXED*
 
+# weight names - names for base models
+parser.add_argument('--weights_names', dest='w_names', nargs='+', default=[], type=str)
+
 # Test sampleID
 parser.add_argument('--train_sampleID', type=str, dest='sampleid_path')
 
@@ -293,6 +296,26 @@ Kweights = len(args.w_paths)
 if Kweights < 2:
 	raise SystemExit('Must specify at least 2 weight files for stacked regression.\n')
 
+
+# check for incorrect number of weight names or non-unique names
+if (len(args.w_names) != Kweights) or (len(args.w_names) != len(set(args.w_names))):
+
+	old_w_names = args.w_names
+	args.w_names = ['W'+str(k) for k in range(Kweights)]
+
+	# only show warning if user supplied --weights_names (ie, args.w_names was non-empty)
+	if old_w_names:
+		w_names_warning = ''
+
+		if (len(old_w_names) != Kweights):
+			w_names_warning = str(len(old_w_names)) + ' names given for ' + str(Kweights) + ' weight files; '
+
+		if (len(old_w_names) != len(set(old_w_names))):
+			w_names_warning = w_names_warning + 'non-unique names; '
+		
+		print('WARNING: Invalid --weight_names (' + ', '.join(old_w_names) + '); ' + w_names_warning + 'reverting to default names (' + ', '.join(args.w_names) + ').\n')
+
+
 if args.genofile_type == 'vcf':
 	if (args.data_format != 'GT') and (args.data_format != 'DS'):
 		raise SystemExit('Please specify the genotype data format used by the vcf file (--format ) as either "GT" or "DS".\n')
@@ -318,6 +341,7 @@ Training sampleID file: {sampleid_path}
 Chromosome: {chrm}
 K (number of trained input models): {K}
 cis-eQTL weight files:{w_paths_str}
+cis-eQTL model names: {w_names_str}
 Training genotype file: {geno_path}
 Genotype file used for training is type: {genofile_type}
 Genotype data format: {data_format}
@@ -337,6 +361,7 @@ Output trained weights file: {out_weight}
 	maf_diff_str1 = {0:'Not e', 1:'E'}[do_maf_diff],
 	maf_diff_str2 = {0:'by MAF difference.', 1:'if MAF difference exceeds: |' + str(args.maf_diff) + '|'}[do_maf_diff],
 	w_paths_str = '\n  '.join(args.w_paths),
+	w_names_str = ', '.join(args.w_names),
 	K = Kweights,
 	out_info = out_info_path,
 	out_weight = out_weight_path))
@@ -377,13 +402,17 @@ pd.DataFrame(columns=out_weight_cols).to_csv(
 	mode='w')
 
 # dictionary of dtypes for info output
-info_wk_dtypes = {'W'+str(k)+n : v for k in range(Kweights) for n,v in {'_N_SNP':np.int64,'_CVR2':np.float64,'_R2':np.float64,'_PVAL':np.float64}.items()}
+info_wk_dtypes = {'W'+str(k)+n : v for k in range(Kweights) for n,v in {'_NSNP':np.int64,'_CVR2':np.float64,'_R2':np.float64,'_PVAL':np.float64}.items()}
 info_zeta_cols = ['Z'+str(k) for k in range(Kweights)]
 info_wk_cols = list(info_wk_dtypes.keys())
 
+out_info_zeta_wk_cols = ['Z_'+name_k for name_k in args.w_names] + [name_k+v for name_k in args.w_names for v in ['_NSNP','_CVR2','_R2','_PVAL']]
+
 print('Creating file: ' + out_info_path + '\n')
 # out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
-out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
+# out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
+out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + out_info_zeta_wk_cols
+
 
 pd.DataFrame(columns=out_info_cols).to_csv(
 	out_info_path,
