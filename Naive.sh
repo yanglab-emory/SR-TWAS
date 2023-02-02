@@ -25,6 +25,14 @@ while [ $# -gt 0 ]; do
                 weights+=("$2")
                 shift
             done
+        elif [[ $v == "weights_names" ]]; then
+            while [[ $2 != *"--"* ]]; do
+                if [[ $2 == "" ]]; then 
+                    break;
+                fi
+                weights_names+=("$2")
+                shift
+            done    
         else
             declare $v="$2"
         fi
@@ -164,6 +172,7 @@ python ${SR_TWAS_dir}/Naive.py \
 --train_sampleID ${train_sampleID} \
 --weight_threshold ${weight_threshold} \
 --weights ${weights[@]} \
+--weights_names ${weights_names[@]} \
 --window ${window} \
 > ${out_dir}/logs/${log_file}
 

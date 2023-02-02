@@ -406,12 +406,12 @@ info_wk_dtypes = {'W'+str(k)+n : v for k in range(Kweights) for n,v in {'_NSNP':
 info_zeta_cols = ['Z'+str(k) for k in range(Kweights)]
 info_wk_cols = list(info_wk_dtypes.keys())
 
-output_info_zeta_wk_cols = ['Z_'+name_k for name_k in args.w_names] + [name_k+v for name_k in args.w_names for v in ['_NSNP','_CVR2','_R2','_PVAL']]
+out_info_zeta_wk_cols = ['Z_'+name_k for name_k in args.w_names] + [name_k+v for name_k in args.w_names for v in ['_NSNP','_CVR2','_R2','_PVAL']]
 
 print('Creating file: ' + out_info_path + '\n')
 # out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
 # out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
-out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + output_info_zeta_wk_cols
+out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + out_info_zeta_wk_cols
 
 
 pd.DataFrame(columns=out_info_cols).to_csv(
