@@ -118,6 +118,7 @@ Example input files provided under `./ExampleData/` are generated artificially. 
 ### Arguments
 - `--chr`: Chromosome number need to be specified with respect to the genotype input data
 - `--weights`: Space delimited list of paths to trained eQTL weight files (bgzipped and tabixed). 
+- `--weights_names`: Space delimited list of names corresponding to base models specified by `--weights`; if user-submitted list is not the same length as number of base models or names are non-unique will use default (default: `[W0, W1, W2, ..., W{K}]`)
 - `--gene_exp`: Path to Gene annotation and Expression file
 - `--genofile`: Path to the training genotype file (bgzipped and tabixed)
 - `--genofile_type`: Genotype file type: `vcf` or `dosage`
@@ -125,10 +126,10 @@ Example input files provided under `./ExampleData/` are generated artificially. 
 	- `GT`: genotype data
 	- `DS`: dosage data
 - `--train_sampleID`: Path to a file with sampleIDs that will be used for training
-- `--maf_diff`: Minor Allele Frequency threshold (ranges from 0 to 1) to exclude eQTL weights obtained from data in which the absolute value between the MAF substantially different from that of the validation data. (ie, if the absolute value of the difference between the validation genotype data and the weight file MAF exceeds `maf_diff`, then the effect size from that weight file is excluded). To use this option all weight files _MUST_ contain a `MAF` column. (default: `0`)
+- `--maf_diff`: Minor Allele Frequency threshold (ranges from 0 to 1) to exclude eQTL weights obtained from data in which the absolute value between the MAF substantially different from that of the validation data. (ie, if the absolute value of the difference between the validation genotype data and the weight file MAF exceeds `maf_diff`, then the effect size from that weight file is excluded). To use this option all weight files _MUST_ contain a `MAF` column. (default: `0` [no filtering])
 - `--missing rate`: Missing rate threshold. If the rate of missing values for a SNP exceeds this value the SNP will be excluded. Otherwise, missing values for non-excluded SNPs will be imputed as the mean. (default: `0.2`)
 - `--hwe`: Hardy Weinberg Equilibrium p-value threshold to exclude variants that violated HWE (default: `0.00001`)
-- `weight_threshold`: Exclude eQTL weights with a magnitude less than this threshold. (default: `0`)
+- `weight_threshold`: Exclude eQTL weights with a magnitude less than this threshold (default: `0` [no filtering])
 - `--window`: Window size (in base pairs) around gene region from which to include SNPs (default: `1000000` [`+- 1MB` region around gene region])
 - `--cvR2`: Whether to perform 5-fold cross validation by average R2: `0` or `1` (default: `1`)
 	- `0`: Skip 5-fold cross validation evaluation
@@ -153,8 +154,13 @@ genofile="${SR_TWAS_dir}/ExampleData/genotype.vcf.gz"
 out_dir="${SR_TWAS_dir}/ExampleData/output"
 
 weight0="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort0_eQTLweights.txt.gz"
+weight_name0=cohort0
+
 weight1="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort1_eQTLweights.txt.gz"
+weight_name1=cohort1
+
 weight2="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort2_eQTLweights.txt.gz"
+weight_name2=cohort2
 
 ${SR_TWAS_dir}/SR_TWAS.sh \
 --gene_exp ${gene_exp} \
@@ -169,7 +175,9 @@ ${SR_TWAS_dir}/SR_TWAS.sh \
 --thread 2 \
 --out_dir ${out_dir} \
 --SR_TWAS_dir ${SR_TWAS_dir} \
---weights ${weight0} ${weight1} ${weight2}
+--weights ${weight0} ${weight1} ${weight2} \
+--weights_names ${weight_name0} ${weight_name1} ${weight_name2}
+--
 ```
 
 ### Output
