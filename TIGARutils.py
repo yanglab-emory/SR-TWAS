@@ -578,9 +578,10 @@ def tabix_query_files(start, end, chrm, geno_path=None, gwas_path=None, w_path=N
 
 	else:
 
-		if not tabix_query_file(geno_path, reg_str):
-			print('No genotype data for target.\n')
-			raise NoTargetDataError
+		if geno_path is not None:
+			if not tabix_query_file(geno_path, reg_str):
+				print('No genotype data for target.\n')
+				raise NoTargetDataError
 
 		w_query = [tabix_query_file(path, reg_str) for path in w_paths]
 

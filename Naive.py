@@ -466,14 +466,14 @@ def thread_process(num):
 		mode='a')
 
 	# output training info
-	Info = Expr[['CHROM','GeneStart','GeneEnd','TargetID','GeneName']].copy()
+	Info = Expr[['CHROM','GeneStart','GeneEnd','TargetID','GeneName']].copy().reset_index()
 	Info['sample_size'] = Y.size
 	Info['N_SNP'] = n_snps
 	Info['N_EFFECT_SNP'] = Weight_Out.ES.size
 	Info['CVR2'] = avg_r2_cv
 	Info['R2'] = naive_r2
 	Info['PVAL'] = naive_pval
-
+	
 	Info = Info.join(pd.DataFrame.from_records(wk_out_vals, index=[0]).astype(info_wk_dtypes))[info_cols]
 
 	Info.to_csv(
