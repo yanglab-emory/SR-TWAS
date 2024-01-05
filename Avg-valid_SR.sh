@@ -91,7 +91,7 @@ if [[ ! -x  ${SR_TWAS_dir}/SR_TWAS.py ]] ; then
     chmod 755 ${SR_TWAS_dir}/SR_TWAS.py
 fi
 
-python ${SR_TWAS_dir}/Naive_no_validation_data.py \
+python ${SR_TWAS_dir}/Avg-valid_SR.py \
 --chr ${chr} \
 --gene_anno ${gene_anno} \
 --out_dir ${out_sub_dir} \

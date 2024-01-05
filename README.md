@@ -11,10 +11,11 @@
 		- [2. SampleID File](#2-sampleid-file)
 		- [3. Gene Expression File](#3-gene-expression-file)
 	- [Weight (eQTL effect size) Files](#weight-eqtl-effect-size-files)
-- [Example Usage](#example-usage)
+- [SR-TWAS: Example Usage](#example-usage)
 	- [Arguments](#arguments)
 	- [Example Command](#example-command)
 	- [Output](#output)
+- [Avg-valid+SR: Example Usage](#example-usage)
 
 <!-- - [VCF](#vcf-variant-call-format)
 - [Dosage](#dosage-file) -->
@@ -162,7 +163,7 @@ weight_name1=cohort1
 weight2="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort2_eQTLweights.txt.gz"
 weight_name2=cohort2
 
-${SR_TWAS_dir}/SR_TWAS.sh \
+${SR_TWAS_dir}/SR-TWAS.sh \
 --gene_exp ${gene_exp} \
 --train_sampleID ${train_sampleID} \
 --chr 1 \

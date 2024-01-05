@@ -154,7 +154,7 @@ if [[ ! -x  ${SR_TWAS_dir}/SR_TWAS.py ]] ; then
     chmod 755 ${SR_TWAS_dir}/SR_TWAS.py
 fi
 
-python ${SR_TWAS_dir}/SR_TWAS.py \
+python ${SR_TWAS_dir}/SR-TWAS.py \
 --chr ${chr} \
 --cvR2 ${cvR2} \
 --cvR2_threshold ${cvR2_threshold} \
