@@ -30,7 +30,6 @@ start_time = time()
 parser = argparse.ArgumentParser(description='SR-TWAS script.')
 
 # Specify tool directory
-# parser.add_argument('--TIGAR_dir', type=str)
 parser.add_argument('--SR_TWAS_dir', type=str)
 
 # eQTL weight files
@@ -45,9 +44,6 @@ parser.add_argument('--train_sampleID', type=str, dest='sampleid_path')
 
 # specified chromosome number
 parser.add_argument('--chr', type=str, dest='chrm')
-
-# # Gene annotation file
-# parser.add_argument('--gene_anno',type=str,dest='annot_path')
 
 # for Gene annotation and Expression level file
 parser.add_argument('--gene_exp', type=str, dest='geneexp_path')
@@ -76,8 +72,8 @@ parser.add_argument('--cvR2', type=int)
 # threshold cvR2 value for training (default: 0.005)
 parser.add_argument('--cvR2_threshold', type=float)
 
-# number of thread
-parser.add_argument('--thread', type=int)
+# number of parallel processes
+parser.add_argument('--parallel', type=int)
 
 # Threshold of difference of maf between training data and testing data
 parser.add_argument('--maf_diff', type=float)
@@ -226,7 +222,7 @@ Excluding SNPs if missing rate exceeds: {missing_rate}
 {maf_diff_str1}xcluding SNPs matched between eQTL weight file and training genotype file {maf_diff_str2}
 HWE p-value threshold for SNP inclusion: {hwe}
 {cvR2_str1} Stacked Regression model by 5-fold cross validation{cvR2_str2}.
-Number of threads: {thread}
+Number of parallel processes: {parallel}
 Output directory: {out_dir}
 Output training info file: {out_info}
 Output trained weights file: {out_weight}
@@ -287,10 +283,10 @@ pd.DataFrame(columns=out_info_cols).to_csv(
 print('********************************\n')
 
 ##############################################################
-# thread function
+# parallel function
 
 @tg.error_handler
-def thread_process(num):
+def parallel_process(num):
 	
 	target = TargetID[num]
 	print('num=' + str(num) + '\nTargetID=' + target)
@@ -466,14 +462,14 @@ def thread_process(num):
 		mode='a')
 
 	# output training info
-	Info = Expr[['CHROM','GeneStart','GeneEnd','TargetID','GeneName']].copy()
+	Info = Expr[['CHROM','GeneStart','GeneEnd','TargetID','GeneName']].copy().reset_index()
 	Info['sample_size'] = Y.size
 	Info['N_SNP'] = n_snps
 	Info['N_EFFECT_SNP'] = Weight_Out.ES.size
 	Info['CVR2'] = avg_r2_cv
 	Info['R2'] = naive_r2
 	Info['PVAL'] = naive_pval
-
+	
 	Info = Info.join(pd.DataFrame.from_records(wk_out_vals, index=[0]).astype(info_wk_dtypes))[info_cols]
 
 	Info.to_csv(
@@ -486,11 +482,11 @@ def thread_process(num):
 	print('Target training completed.\n')
 
 ###############################################################
-# thread process
+# parallel process
 if __name__ == '__main__':
 	print('Starting training for ' + str(n_targets) + ' target genes.\n')
-	pool = multiprocessing.Pool(args.thread)
-	pool.imap(thread_process,[num for num in range(n_targets)])
+	pool = multiprocessing.Pool(args.parallel)
+	pool.imap(parallel_process,[num for num in range(n_targets)])
 	pool.close()
 	pool.join()
 	print('Done.')

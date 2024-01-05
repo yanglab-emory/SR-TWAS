@@ -53,7 +53,7 @@ import numpy as np
 class NoTargetDataError(Exception):
 	pass
 
-# wrapper for thread_process functions; adds error catching/logging for failed targets
+# wrapper for parallel_process functions; adds error catching/logging for failed targets
 def error_handler(func):
 	@functools.wraps(func)
 	def wrapper(num, *args, **kwargs):     
