@@ -41,6 +41,13 @@ parser.add_argument('--weights', dest='w_paths', nargs='+', default=[], type=str
 # weight names - names for base models
 parser.add_argument('--weights_names', dest='w_names', nargs='+', default=[], type=str)
 
+# eQTL weight files for validation data(s) (optional)
+parser.add_argument('--valid_weights', dest='wvalid_paths', nargs='+', default=[], type=str)
+# ASSUME THESE FILES ARE *TABIXED*
+
+# valid weight names - names for base models made from validation data (optional)
+parser.add_argument('--valid_weights_names', dest='wvalid_names', nargs='+', default=[], type=str)
+
 # Test sampleID
 parser.add_argument('--train_sampleID', type=str, dest='sampleid_path')
 
@@ -96,6 +103,12 @@ parser.add_argument('--out_dir', type=str)
 parser.add_argument('--out_weight_file', type=str)
 parser.add_argument('--out_info_file', type=str)
 
+
+# file names
+parser.add_argument('--out_avg_weight_file', type=str)
+parser.add_argument('--out_avg_info_file', type=str)
+
+
 args = parser.parse_args()
 sys.path.append(args.SR_TWAS_dir)
 
@@ -106,6 +119,9 @@ import TIGARutils as tg
 
 def ES(k):
 	return 'ES'+str(k)
+
+def VES(k):
+	return 'VES'+str(k)	
 
 def MAF(k):
 	return 'MAF'+str(k)
@@ -292,10 +308,11 @@ class WeightStackingRegressor(StackingRegressor):
 
 #############################################################
 # check input arguments
+
+# Weight input
 Kweights = len(args.w_paths)
 if Kweights < 2:
 	raise SystemExit('Must specify at least 2 weight files for stacked regression.\n')
-
 
 # check for incorrect number of weight names or non-unique names
 if (len(args.w_names) != Kweights) or (len(args.w_names) != len(set(args.w_names))):
@@ -313,7 +330,30 @@ if (len(args.w_names) != Kweights) or (len(args.w_names) != len(set(args.w_names
 		if (len(old_w_names) != len(set(old_w_names))):
 			w_names_warning = w_names_warning + 'non-unique names; '
 		
-		print('WARNING: Invalid --weight_names (' + ', '.join(old_w_names) + '); ' + w_names_warning + 'reverting to default names (' + ', '.join(args.w_names) + ').\n')
+		print('WARNING: Invalid --weights_names (' + ', '.join(old_w_names) + '); ' + w_names_warning + 'reverting to default names (' + ', '.join(args.w_names) + ').\n')
+
+# valid weight input
+if args.wvalid_paths:
+	do_avg = True
+	KVweights = len(args.wvalid_paths)
+
+	if (len(args.wvalid_names) != KVweights) or (len(args.wvalid_names) != len(set(args.wvalid_names))):
+		old_wv_names = args.wvalid_names
+		args.wv_names = ['WV'+str(k) for k in range(KVweights)]
+
+		# only show warning if user supplied --valid_weights_names (ie, args.wvalid_names was non-empty)
+		if old_wv_names:
+			wv_names_warning = ''
+
+			if (len(old_wv_names) != KVweights):
+				wv_names_warning = str(len(old_wv_names)) + ' names given for ' + str(KVweights) + ' validation data weight files; '
+
+			if (len(old_wv_names) != len(set(old_wv_names))):
+				wv_names_warning = wv_names_warning + 'non-unique names; '
+			
+			print('WARNING: Invalid --valid_weights_names (' + ', '.join(old_wv_names) + '); ' + wv_names_warning + 'reverting to default names (' + ', '.join(args.wv_names) + ').\n')
+else:
+	do_avg = False
 
 
 if args.genofile_type == 'vcf':
@@ -329,6 +369,13 @@ else:
 out_weight_path = args.out_dir + '/temp_' + args.out_weight_file
 out_info_path = args.out_dir + '/' + args.out_info_file
 
+if do_avg:
+	out_avg_weight_path = args.out_dir + '/temp_' + args.out_avg_weight_file
+	out_avg_info_path = args.out_dir + '/' + args.out_avg_info_file
+else: 
+	out_avg_weight_path = ''
+	out_avg_info_path = ''
+
 do_maf_diff = 0 if not args.maf_diff else 1
 
 #############################################################
@@ -342,6 +389,11 @@ Chromosome: {chrm}
 K (number of trained input models): {K}
 cis-eQTL weight files:{w_paths_str}
 cis-eQTL model names: {w_names_str}
+{do_avg_str}
+	Validation data-trained cis-eQTL weight files:{wvalid_paths_str}
+	Validation data-trained cis-eQTL weight model names: {wvalid_names_str}
+	Output Avg_SR+valid training info file: {out_avg_info}
+	Output Avg_SR+valid training weights file: {out_avg_weight}
 Training genotype file: {geno_path}
 Genotype file used for training is type: {genofile_type}
 Genotype data format: {data_format}
@@ -362,9 +414,18 @@ Output trained weights file: {out_weight}
 	maf_diff_str2 = {0:'by MAF difference.', 1:'if MAF difference exceeds: |' + str(args.maf_diff) + '|'}[do_maf_diff],
 	w_paths_str = '\n  '.join(args.w_paths),
 	w_names_str = ', '.join(args.w_names),
+	do_avg_str = {0:'Not a', 1:'A'}[do_avg] + 'veraging SR-TWAS model with models trained on validation data.' + {0:'', 1:'\n\t '}[do_avg]
+	wvalid_paths_str = '\n  '.join(args.wvalid_paths),
+	wvalid_names_str = ', '.join(args.wvalid_names),
 	K = Kweights,
 	out_info = out_info_path,
-	out_weight = out_weight_path))
+	out_weight = out_weight_path,
+	out_avg_info = out_avg_info_path,
+	out_avg_weight = out_avg_weight_path))
+
+	
+
+
 
 # sr_naive_str1 = {0:'P', 1:'Not p'}[args.naive]
 
@@ -388,8 +449,12 @@ GeneExp, TargetID, n_targets = tg.read_gene_annot_exp(**exp_info)
 
 # get info for the weight files
 weights_info = tg.weight_k_files_info(**args.__dict__)
-
 ES_cols = [ES(k) for k in range(Kweights)]
+
+## valid_weights
+if do_avg:
+	validweights_info = tg.weight_k_files_info(w_paths=args.wvalid_paths, maf_diff=0, **args.__dict__)
+	VES_cols = [VES(k) for k in range(KVweights)]
 
 # set up output files
 print('Creating file: ' + out_weight_path + '\n')
@@ -412,7 +477,6 @@ print('Creating file: ' + out_info_path + '\n')
 # out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
 # out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + info_zeta_cols + info_wk_cols
 out_info_cols = ['CHROM', 'GeneStart', 'GeneEnd', 'TargetID', 'GeneName','sample_size','N_SNP','N_EFFECT_SNP','CVR2', 'R2', 'PVAL'] + out_info_zeta_wk_cols
-
 
 pd.DataFrame(columns=out_info_cols).to_csv(
 	out_info_path,
