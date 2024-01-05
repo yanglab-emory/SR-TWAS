@@ -40,8 +40,8 @@ parser.add_argument('--gene_anno', type=str, dest='annot_path', required=True)
 # window
 parser.add_argument('--window', type=int)
 
-# number of thread
-parser.add_argument('--thread', type=int)
+# number of parallel
+parser.add_argument('--parallel', type=int)
 
 # output dir
 parser.add_argument('--out_dir', type=str)
@@ -106,7 +106,7 @@ Chromosome: {chrm}
 K (number of trained input models): {K}
 cis-eQTL weight files:{w_paths_str}
 cis-eQTL model names: {w_names_str}
-Number of threads: {thread}
+Number of parallel processes: {parallel}
 Output directory: {out_dir}
 Output training info file: {out_info}
 Output trained weights file: {out_weight}
@@ -165,10 +165,10 @@ pd.DataFrame(columns=out_info_cols).to_csv(
 print('********************************\n')
 
 ##############################################################
-# thread function
+# parallel function
 
 @tg.error_handler
-def thread_process(num):
+def parallel_process(num):
 	
 	target = TargetID[num]
 	print('num=' + str(num) + '\nTargetID=' + target)
@@ -305,11 +305,11 @@ def thread_process(num):
 	print('Target training completed.\n')
 
 ###############################################################
-# thread process
+# parallel process
 if __name__ == '__main__':
 	print('Starting training for ' + str(n_targets) + ' target genes.\n')
-	pool = multiprocessing.Pool(args.thread)
-	pool.imap(thread_process,[num for num in range(n_targets)])
+	pool = multiprocessing.Pool(args.parallel)
+	pool.imap(parallel_process,[num for num in range(n_targets)])
 	pool.close()
 	pool.join()
 	print('Done training for '+ str(n_targets) + ' target genes.\n')

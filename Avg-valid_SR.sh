@@ -1,18 +1,18 @@
 #!/usr/bin/bash
 
 #######################################################################
-### Input Arguments for Naive method
+### Input Arguments for Avg-valid+SR method
 #######################################################################
 
 ###############################################################
 
-
-# getopt -o "" -a -l \
-# chr:,cvR2:,cvR2_threshold:,format:,gene_exp:,genofile:,genofile_type:,hwe:,log_file:,maf_diff:,missing_rate:,out_dir:,out_info_file:,out_prefix:,out_weight_file:,SR_TWAS_dir:,sub_dir:,thread:,train_sampleID:,weight_threshold:,weights:,window: \
-# -- "$@"
+# deprecated arguments
+thread=0
 
 
+# read arguments
 weights=( )
+weights_names=( )
 
 while [ $# -gt 0 ]; do
     if [[ $1 == *"--"* ]]; then
@@ -41,27 +41,29 @@ while [ $# -gt 0 ]; do
 done
 
 
-########## Set default value
-# cvR2=${cvR2:-1}
-# cvR2_threshold=${cvR2_threshold:-0.005}
-# format=${format:-"GT"}
-# hwe=${hwe:-0.00001}
-# maf_diff=${maf_diff:-0}
-# missing_rate=${missing_rate:-0.2}
+########## Set default values
+# warn/set deprecated
+if [[ "$thread"x != "0"x ]];then
+    echo 'Warning: --thread is deprecated; Please use --parallel'
+    parallel=${parallel:-${thread}}
+else
+    parallel=${parallel:-1}
+fi
+
+# set defaults
 sub_dir=${sub_dir:-1}
-thread=${thread:-1}
 weight_threshold=${weight_threshold:-0}
 window=${window:-$((10**6))}
 
 # output file names
-out_prefix=${out_prefix:-CHR${chr}_naive_train}
+out_prefix=${out_prefix:-CHR${chr}_AvgvalidSR_train}
 out_weight_file=${out_weight_file:-${out_prefix}_eQTLweights.txt}
 out_info_file=${out_info_file:-${out_prefix}_GeneInfo.txt}
 log_file=${log_file:-${out_prefix}_log.txt}
 
 # sub directory in out directory
 if [[ "$sub_dir"x == "1"x ]];then
-    out_sub_dir=${out_dir}/Naive_CHR${chr}
+    out_sub_dir=${out_dir}/Avg_CHR${chr}
 else
     out_sub_dir=${out_dir}
 fi
@@ -86,9 +88,9 @@ if [ ! -f "${gene_anno}" ] ; then
 fi
 
 
-## SR-TWAS
-if [[ ! -x  ${SR_TWAS_dir}/SR_TWAS.py ]] ; then
-    chmod 755 ${SR_TWAS_dir}/SR_TWAS.py
+## Avg-valid+SR
+if [[ ! -x  ${SR_TWAS_dir}/Avg-valid_SR.py ]] ; then
+    chmod 755 ${SR_TWAS_dir}/Avg-valid_SR.py
 fi
 
 python ${SR_TWAS_dir}/Avg-valid_SR.py \
@@ -98,15 +100,14 @@ python ${SR_TWAS_dir}/Avg-valid_SR.py \
 --out_info_file ${out_info_file} \
 --out_weight_file ${out_weight_file} \
 --SR_TWAS_dir ${SR_TWAS_dir} \
---thread ${thread} \
+--parallel ${parallel} \
 --weights ${weights[@]} \
 --weights_names ${weights_names[@]} \
 --window ${window} \
 > ${out_dir}/logs/${log_file}
 
 
-# --weight_threshold ${weight_threshold} \
-echo "Completed SR-TWAS training."
+echo "Completed Avg-valid+SR training."
 
 
 # SORT, BGZIP, AND TABIX

@@ -9,13 +9,16 @@
 	- [Validation Data](#validation-data)
 		- [1. Genotype File](#1-genotype-file)
 		- [2. SampleID File](#2-sampleid-file)
-		- [3. Gene Expression File](#3-gene-expression-file)
+		- [3. Gene Annotation/Gene Expression File](#3-gene-annotation-gene-expression-file)
 	- [Weight (eQTL effect size) Files](#weight-eqtl-effect-size-files)
-- [SR-TWAS: Example Usage](#example-usage)
+- [SR-TWAS: Example Usage](#sr-twas-example-usage)
 	- [Arguments](#arguments)
 	- [Example Command](#example-command)
 	- [Output](#output)
-- [Avg-valid+SR: Example Usage](#example-usage)
+- [Avg-valid+SR: Example Usage](#avg-valid-sr-example-usage)
+	- [Arguments](#arguments)
+	- [Example Command](#example-command)
+	- [Output](#output)
 
 <!-- - [VCF](#vcf-variant-call-format)
 - [Dosage](#dosage-file) -->
@@ -83,17 +86,18 @@ Example input files provided under `./ExampleData/` are generated artificially. 
 - Argument: `--train_sampleID`
 
 
-#### 3. Gene Expression File
+#### 3. Gene Annotation/Gene Expression File
 
 | CHROM | GeneStart | GeneEnd |   TargetID      | GeneName | Sample1 | Sample...|
 |:-----:|:---------:|:-------:|:---------------:|:--------:|:-------:|:--------:|
 |   1   |    100    |   200   |     ENSG0000    |     X    |   0.2   |     ...  |
 
 - First 5 columns are *Chromosome number, Gene start position, Gene end position, Target gene ID, Gene name* (optional, could be the same as Target gene ID).
-- Gene expression data start from the 6th column. Each column denotes the corresponding gene expression value per sample. 
+- Gene Expression data start from the 6th column. Each column denotes the corresponding gene expression value per sample.
+- Gene Annotation files must contain at least the first 5 columns but may have more. Gene Expression files must also include expression data. Gene Expression files may be used as Gene Annotation files.
 - Example: `./ExampleData/gene_expression.txt`
-- Argument: `--gene_exp`
-
+- Argument (Gene Expression File): `--gene_exp`
+- Argument (Gene Annotation File): `--gene_anno`
 
 ### Weight (eQTL effect size) Files
 
@@ -200,47 +204,42 @@ ${SR_TWAS_dir}/SR-TWAS.sh \
 - `--out_dir`: Output directory (will be created if it does not exist)
 - `--sub_dir`: Whether to create a subdirectory for output files within the specified output directory. (default: `1`)
 	- `0`: Output files will be placed in the output directory
-	- `1`: Output files will be placed into subdirectory called `SR_CHR${chr}` within output directory
-- `--out_prefix`: Filenames for the output weight, info, and log files begin with this string if filenames are not otherwise specified using `--out_weight_file`, `--out_info_file`, `--log_file`. (default: `CHR${chr}_SR_train`)
-- `--out_weight_file`: Filename for output eQTL weights file. (default: `${out_prefix}_eQTLweights.txt`, `CHR${chr}_SR_train_eQTLweights.txt`)
-- `--out_info_file`: Filename for output training info file. (default: `${out_prefix}_GeneInfo.txt`, `CHR${chr}_SR_train_GeneInfo.txt.txt`)
-- `--log_file`: (default: `${out_prefix}_log.txt`, `CHR${chr}_SR_train_log.txt`)
+	- `1`: Output files will be placed into subdirectory called `Avg_CHR${chr}` within output directory
+- `--out_prefix`: Filenames for the output weight, info, and log files begin with this string if filenames are not otherwise specified using `--out_weight_file`, `--out_info_file`, `--log_file`. (default: `CHR${chr}_AvgvalidSR_train`)
+- `--out_weight_file`: Filename for output eQTL weights file. (default: `${out_prefix}_eQTLweights.txt`, `CHR${chr}_AvgvalidSR_train_eQTLweights.txt`)
+- `--out_info_file`: Filename for output training info file. (default: `${out_prefix}_GeneInfo.txt`, `CHR${chr}_AvgvalidSR_train_GeneInfo.txt.txt`)
+- `--log_file`: (default: `${out_prefix}_log.txt`, `CHR${chr}_AvgvalidSR_train_log.txt`)
 
 ### Example Command
 ```bash
-gene_exp="${SR_TWAS_dir}/ExampleData/gene_expression.txt"
-train_sampleID="${SR_TWAS_dir}/ExampleData/train_sampleID.txt"
-genofile="${SR_TWAS_dir}/ExampleData/genotype.vcf.gz"
+
+gene_anno="${SR_TWAS_dir}/ExampleData/gene_expression.txt"
 out_dir="${SR_TWAS_dir}/ExampleData/output"
 
-weight0="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort0_eQTLweights.txt.gz"
-weight_name0=cohort0
+valid_weight0="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort0_eQTLweights.txt.gz"
+valid_weight_name0=valid_model0
 
-weight1="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort1_eQTLweights.txt.gz"
-weight_name1=cohort1
+valid_weight1="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort1_eQTLweights.txt.gz"
+valid_weight_name1=valid_model1
 
-weight2="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort2_eQTLweights.txt.gz"
-weight_name2=cohort2
+## run example SR command to get output weight file
+SR_weight="${SR_TWAS_dir}/ExampleData/output/SR_CHR1/CHR1_SR_train_eQTLweights.txt.gz"
+SR_weight_name=SR
 
-${SR_TWAS_dir}/SR-TWAS.sh \
---gene_exp ${gene_exp} \
---train_sampleID ${train_sampleID} \
+
+${SR_TWAS_dir}/Avg-valid_SR.sh \
+--gene_anno ${gene_exp} \
 --chr 1 \
---genofile ${genofile} \
---genofile_type vcf \
---format GT \
---maf 0.01 \
---hwe 0.0001 \
---cvR2 1 \
 --parallel 2 \
 --out_dir ${out_dir} \
 --SR_TWAS_dir ${SR_TWAS_dir} \
---weights ${weight0} ${weight1} ${weight2} \
---weights_names ${weight_name0} ${weight_name1} ${weight_name2}
+--weights ${valid_weight0} ${valid_weight1} ${SR_weight} \
+--weights_names ${valid_weight_name0} ${valid_weight_name1} ${SR_weight_name}
 --
 ```
 
 ### Output
-- `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_eQTLweights.txt` is the file storing all eQTL effect sizes (`ES`) estimated from the gene expression imputation model per gene (`TargetID`)
-- `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_GeneInfo.txt` is the file storing information about the fitted gene expression imputation model per gene (per row), including gene annotation (`CHROM GeneStart GeneEnd TargetID GeneName`), sample size (`sample_size`), number of SNPs used in the model training (`N_SNP`), number of SNPs with non-zero eQTL effect sizes (`N_EFFECT_SNP`), imputation R2 by 5-fold cross validation (`CVR2`), imputation R2 using all given training samples (`R2`), p-value of the training R2 (`PVAL`), and the zeta weight used for each component weight model (`Z0`,`Z1`,...), and 4 columns for each component weight model describing performance on the validation data (`W0_N_SNP`,`W0_CVR2`,`W0_R2`,`W0_PVAL`,`W1_N_SNP`,`W1_CVR2`,`W1_R2`,`W1_PVAL`,...)
-- `${out_dir}/logs/CHR${chr}_SR_train_log.txt` is the file storing all log messages for model training.
+- `${out_dir}/Avg_CHR${chr}/CHR${chr}_AvgvalidSR_train_eQTLweights.txt` is the file storing all eQTL effect sizes (`ES`) estimated from the gene expression imputation model per gene (`TargetID`)
+- `${out_dir}/Avg_CHR${chr}/CHR${chr}_AvgvalidSR_train_GeneInfo.txt` is the file storing information about the fitted gene expression imputation model per gene (per row), including gene annotation (`CHROM GeneStart GeneEnd TargetID GeneName`), sample size (`sample_size`), number of SNPs used in the model training (`N_SNP`), number of SNPs with non-zero eQTL effect sizes (`N_EFFECT_SNP`), and an column for component weight model with the number of SNPs that were used from that model (`W0_N_SNP`,`W1_N_SNP`,...)
+- `${out_dir}/logs/CHR${chr}_AvgvalidSR_train_log.txt` is the file storing all log messages for model training.
+

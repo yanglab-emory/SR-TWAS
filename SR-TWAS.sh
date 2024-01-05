@@ -6,12 +6,11 @@
 
 ###############################################################
 
-
-# getopt -o "" -a -l \
-# chr:,cvR2:,cvR2_threshold:,format:,gene_exp:,genofile:,genofile_type:,hwe:,log_file:,maf_diff:,missing_rate:,out_dir:,out_info_file:,out_prefix:,out_weight_file:,SR_TWAS_dir:,sub_dir:,parallel:,train_sampleID:,weight_threshold:,weights:,window: \
-# -- "$@"
+# deprecated arguments
+thread=0
 
 
+# read arguments
 weights=( )
 weights_names=( )
 
@@ -42,6 +41,15 @@ while [ $# -gt 0 ]; do
 done
 
 ########## Set default value
+# warn/set deprecated
+if [[ "$thread"x != "0"x ]];then
+    echo 'Warning: --thread is deprecated; Please use --parallel'
+    parallel=${parallel:-${thread}}
+else
+    parallel=${parallel:-1}
+fi
+
+# set defaults
 cvR2=${cvR2:-1}
 cvR2_threshold=${cvR2_threshold:-0.005}
 format=${format:-"GT"}
@@ -49,14 +57,8 @@ hwe=${hwe:-0.00001}
 maf_diff=${maf_diff:-0}
 missing_rate=${missing_rate:-0.2}
 sub_dir=${sub_dir:-1}
-parallel=${parallel:-1}
 weight_threshold=${weight_threshold:-0}
 window=${window:-$((10**6))}
-
-
-
-
-
 
 # output file names
 out_prefix=${out_prefix:-CHR${chr}_SR_train}
@@ -103,8 +105,8 @@ if [ ! -f "${genofile}" ]; then
 fi
 
 ## SR-TWAS
-if [[ ! -x ${SR_TWAS_dir}/SR_TWAS.py ]] ; then
-    chmod 755 ${SR_TWAS_dir}/SR_TWAS.py
+if [[ ! -x ${SR_TWAS_dir}/SR-TWAS.py ]] ; then
+    chmod 755 ${SR_TWAS_dir}/SR-TWAS.py
 fi
 
 python ${SR_TWAS_dir}/SR-TWAS.py \
