@@ -40,7 +40,7 @@ parser.add_argument('--gene_anno', type=str, dest='annot_path', required=True)
 # window
 parser.add_argument('--window', type=int)
 
-# number of parallel
+# number of parallel processes
 parser.add_argument('--parallel', type=int)
 
 # output dir

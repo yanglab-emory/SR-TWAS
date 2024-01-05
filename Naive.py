@@ -72,7 +72,7 @@ parser.add_argument('--cvR2', type=int)
 # threshold cvR2 value for training (default: 0.005)
 parser.add_argument('--cvR2_threshold', type=float)
 
-# number of parallel
+# number of parallel processes
 parser.add_argument('--parallel', type=int)
 
 # Threshold of difference of maf between training data and testing data

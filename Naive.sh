@@ -104,7 +104,7 @@ if [ ! -f "${genofile}" ]; then
     exit 1
 fi
 
-## SR-TWAS
+## Naive
 if [[ ! -x  ${SR_TWAS_dir}/Naive.py ]] ; then
     chmod 755 ${SR_TWAS_dir}/Naive.py
 fi
