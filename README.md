@@ -1,4 +1,4 @@
-# SR-TWAS
+ # SR-TWAS
 
 **SR-TWAS** stands for **Stacked Regression-Transcriptome-Wide Association Study**, which is developed using *Python* and *BASH* scripts for creating improved **Genetically Regulated gene eXpression (GReX) prediction models** by using an Ensemble Machine Learning technique of Stacked Regression to form optimal linear combinations of previously trained gene expression imputation models. SR-TWAS allows users to leverage multiple reference panels of the same tissue type in order to improve GReX prediction accuracy and TWAS power with increased effective training sample sizes.
 
@@ -15,10 +15,10 @@
 	- [Arguments](#arguments)
 	- [Example Command](#example-command)
 	- [Output](#output)
-- [Avg-valid+SR: Example Usage](#avg-valid-sr-example-usage)
-	- [Arguments](#arguments)
-	- [Example Command](#example-command)
-	- [Output](#output)
+- [Avg-valid+SR: Example Usage](#avg-validsr-example-usage)
+	- [Arguments](#arguments-1)
+	- [Example Command](#example-command-1)
+	- [Output](#output-1)
 
 <!-- - [VCF](#vcf-variant-call-format)
 - [Dosage](#dosage-file) -->
