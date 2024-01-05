@@ -22,7 +22,6 @@ start_time = time()
 parser = argparse.ArgumentParser(description='SR-TWAS script.')
 
 # Specify tool directory
-# parser.add_argument('--TIGAR_dir', type=str)
 parser.add_argument('--SR_TWAS_dir', type=str)
 
 # eQTL weight files
@@ -32,51 +31,17 @@ parser.add_argument('--weights', dest='w_paths', nargs='+', default=[], type=str
 # weight names - names for base models
 parser.add_argument('--weights_names', dest='w_names', nargs='+', default=[], type=str)
 
-# Test sampleID
-# parser.add_argument('--train_sampleID', type=str, dest='sampleid_path')
-
 # specified chromosome number
 parser.add_argument('--chr', type=str, dest='chrm')
 
 # # Gene annotation file
-# parser.add_argument('--gene_anno',type=str,dest='annot_path')
-
-# for Gene annotation and Expression level file; can use weight file info output by TIGAR
-# parser.add_argument('--gene_exp', type=str, dest='Gene_path')
 parser.add_argument('--gene_anno', type=str, dest='annot_path', required=True)
-
-# ## test genofile
-# parser.add_argument('--genofile', type=str, dest='geno_path')
-
-# # specified input file type(vcf or dosages)
-# parser.add_argument('--genofile_type', type=str)
-
-# # 'DS' or 'GT' for VCF genotype file
-# parser.add_argument('--format', type=str, dest='data_format')
-
-# window
-# parser.add_argument('--weight_threshold', type=float)
 
 # window
 parser.add_argument('--window', type=int)
 
-# missing rate: threshold for excluding SNPs with too many missing values
-# parser.add_argument('--missing_rate', type=float)
-
-# # cvR2 (0: no CV, 1: CV)
-# parser.add_argument('--cvR2', type=int)
-
-# # threshold cvR2 value for training (default: 0.005)
-# parser.add_argument('--cvR2_threshold', type=float)
-
 # number of thread
 parser.add_argument('--thread', type=int)
-
-# Threshold of difference of maf between training data and testing data
-# parser.add_argument('--maf_diff', type=float)
-
-# p-value for HW test
-# parser.add_argument('--hwe', type=float)
 
 # output dir
 parser.add_argument('--out_dir', type=str)
@@ -147,8 +112,6 @@ Output training info file: {out_info}
 Output trained weights file: {out_weight}
 ********************************'''.format(
 	**args.__dict__,
-	# maf_diff_str1 = {0:'Not e', 1:'E'}[do_maf_diff],
-	# maf_diff_str2 = {0:'by MAF difference.', 1:'if MAF difference exceeds: |' + str(args.maf_diff) + '|'}[do_maf_diff],
 	w_paths_str = '\n  '.join(args.w_paths),
 	w_names_str = ', '.join(args.w_names),
 	K = Kweights,
@@ -217,10 +180,6 @@ def thread_process(num):
 	# Query files; function stops here if no data in genotype and/or no weight file data
 	tabix_target_ks, empty_target_ks = tg.tabix_query_files(start, end, **args.__dict__)
 
-	# READ IN AND PROCESS GENOTYPE DATA 
-	# file must be bgzipped and tabix
-	# Geno = tg.read_tabix(start, end, sampleID, **geno_info)
-
 	# read in weight data for target from all K weight files
 	Weights = pd.DataFrame()
 	target_ks = []
@@ -283,12 +242,6 @@ def thread_process(num):
 	# ks may be added in read in step, need to sort for correct output later
 	empty_target_ks.sort()
 
-	# # add nan columns for weight files without data
-	# if args.maf_diff:
-	# 	empty_wk_cols = flatten([[ES(k),MAF(k)] for k in empty_target_ks])
-	# else: 
-	# 	empty_wk_cols = [ES(k) for k in empty_target_ks]
-
 	# add 0 columns for weight files without data
 	empty_wk_cols = [ES(k) for k in empty_target_ks]
 	Weights[empty_wk_cols] = 0
@@ -311,15 +264,13 @@ def thread_process(num):
 		return None
 
 	# do stacked regression
-	print('Performing naive stacking.')
-	Weights['Naive'] = np.mean(np.nan_to_num(Weights[ES_cols].values), axis=1)
+	print('Averaging models.')
+	Weights['ES'] = np.mean(np.nan_to_num(Weights[ES_cols].values), axis=1)
 	
 	# output Trained weights
-	# Weight_Out = Weights[['CHROM','POS','REF','ALT','MAF','p_HWE']].copy()
-	Weight_Out = Weights[['CHROM','POS','REF','ALT','snpID']].copy()
+	Weight_Out = Weights[['CHROM','POS','REF','ALT','snpID', 'ES']].copy()
 	Weight_Out['ID'] = Weight_Out.snpID
 	Weight_Out['TargetID'] = target
-	Weight_Out['ES'] = Weights['Naive']
 	# filter for non-zero effect size
 	Weight_Out = Weight_Out[Weight_Out['ES'] != 0]
 	# reorder columns
