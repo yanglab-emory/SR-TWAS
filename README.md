@@ -20,10 +20,14 @@ medRxiv 2023.06.20.23291605; doi: [https://doi.org/10.1101/2023.06.20.23291605](
 	- [Arguments](#arguments)
 	- [Example Command](#example-command)
 	- [Output](#output)
-- [Avg-valid+SR: Example Usage](#avg-validsr-example-usage)
+- [Naive method: Example Usage](#naive-method-example-usage)
 	- [Arguments](#arguments-1)
 	- [Example Command](#example-command-1)
 	- [Output](#output-1)
+- [Avg-valid+SR: Example Usage](#avg-validsr-example-usage)
+	- [Arguments](#arguments-2)
+	- [Example Command](#example-command-2)
+	- [Output](#output-2)
 
 <!-- - [VCF](#vcf-variant-call-format)
 - [Dosage](#dosage-file) -->
