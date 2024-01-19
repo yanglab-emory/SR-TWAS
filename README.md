@@ -168,27 +168,72 @@ weight2="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort2_eQTLweights.txt.gz"
 weight_name2=cohort2
 
 ${SR_TWAS_dir}/SR-TWAS.sh \
---gene_exp ${gene_exp} \
---train_sampleID ${train_sampleID} \
 --chr 1 \
+--cvR2 1 \
+--format GT \
+--gene_exp ${gene_exp} \
 --genofile ${genofile} \
 --genofile_type vcf \
---format GT \
---maf 0.01 \
 --hwe 0.0001 \
---cvR2 1 \
---parallel 2 \
+--maf 0.01 \
 --out_dir ${out_dir} \
+--parallel 2 \
 --SR_TWAS_dir ${SR_TWAS_dir} \
+--train_sampleID ${train_sampleID} \
 --weights ${weight0} ${weight1} ${weight2} \
 --weights_names ${weight_name0} ${weight_name1} ${weight_name2}
---
+
 ```
 
 ### Output
 - `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_eQTLweights.txt` is the file storing all eQTL effect sizes (`ES`) estimated from the gene expression imputation model per gene (`TargetID`)
 - `${out_dir}/SR_CHR${chr}/CHR${chr}_SR_train_GeneInfo.txt` is the file storing information about the fitted gene expression imputation model per gene (per row), including gene annotation (`CHROM GeneStart GeneEnd TargetID GeneName`), sample size (`sample_size`), number of SNPs used in the model training (`N_SNP`), number of SNPs with non-zero eQTL effect sizes (`N_EFFECT_SNP`), imputation R2 by 5-fold cross validation (`CVR2`), imputation R2 using all given training samples (`R2`), p-value of the training R2 (`PVAL`), and the zeta weight used for each component weight model (`Z0`,`Z1`,...), and 4 columns for each component weight model describing performance on the validation data (`W0_N_SNP`,`W0_CVR2`,`W0_R2`,`W0_PVAL`,`W1_N_SNP`,`W1_CVR2`,`W1_R2`,`W1_PVAL`,...)
 - `${out_dir}/logs/CHR${chr}_SR_train_log.txt` is the file storing all log messages for model training.
+
+
+## Naive method: Example Usage 
+
+### Arguments
+Arguments are the same as for SR-TWAS.
+
+### Example Command
+```bash
+gene_exp="${SR_TWAS_dir}/ExampleData/gene_expression.txt"
+train_sampleID="${SR_TWAS_dir}/ExampleData/train_sampleID.txt"
+genofile="${SR_TWAS_dir}/ExampleData/genotype.vcf.gz"
+out_dir="${SR_TWAS_dir}/ExampleData/output"
+
+weight0="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort0_eQTLweights.txt.gz"
+weight_name0=cohort0
+
+weight1="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort1_eQTLweights.txt.gz"
+weight_name1=cohort1
+
+weight2="${SR_TWAS_dir}/ExampleData/CHR1_DPR_cohort2_eQTLweights.txt.gz"
+weight_name2=cohort2
+
+${SR_TWAS_dir}/Naive.sh \
+--chr 1 \
+--cvR2 1 \
+--format GT \
+--gene_exp ${gene_exp} \
+--genofile ${genofile} \
+--genofile_type vcf \
+--hwe 0.0001 \
+--maf 0.01 \
+--out_dir ${out_dir} \
+--parallel 2 \
+--SR_TWAS_dir ${SR_TWAS_dir} \
+--train_sampleID ${train_sampleID} \
+--weights ${weight0} ${weight1} ${weight2} \
+--weights_names ${weight_name0} ${weight_name1} ${weight_name2}
+
+```
+
+### Output
+- `${out_dir}/Naive_CHR${chr}/CHR${chr}_naive_train_eQTLweights.txt` is the file storing all eQTL effect sizes (`ES`) estimated from the gene expression imputation model per gene (`TargetID`)
+- `${out_dir}/Naive_CHR${chr}/CHR${chr}_naive_train_GeneInfo.txt` is the file storing information about the fitted gene expression imputation model per gene (per row), including gene annotation (`CHROM GeneStart GeneEnd TargetID GeneName`), sample size (`sample_size`), number of SNPs used in the model training (`N_SNP`), number of SNPs with non-zero eQTL effect sizes (`N_EFFECT_SNP`), imputation R2 by 5-fold cross validation (`CVR2`), imputation R2 using all given training samples (`R2`), p-value of the training R2 (`PVAL`), and the zeta weight used for each component weight model (`Z0`,`Z1`,...), and 4 columns for each component weight model describing performance on the validation data (`W0_N_SNP`,`W0_CVR2`,`W0_R2`,`W0_PVAL`,`W1_N_SNP`,`W1_CVR2`,`W1_R2`,`W1_PVAL`,...)
+- `${out_dir}/logs/CHR${chr}_naive_train_log.txt` is the file storing all log messages for model training.
 
 
 ## Avg-valid+SR: Example Usage 
@@ -235,7 +280,7 @@ ${SR_TWAS_dir}/Avg-valid_SR.sh \
 --SR_TWAS_dir ${SR_TWAS_dir} \
 --weights ${valid_weight0} ${valid_weight1} ${SR_weight} \
 --weights_names ${valid_weight_name0} ${valid_weight_name1} ${SR_weight_name}
---
+
 ```
 
 ### Output
