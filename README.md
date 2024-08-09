@@ -5,9 +5,9 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.12574020.svg)](https://doi.org/10.5281/zenodo.12574020)
 
 ---
-*SR-TWAS: Leveraging Multiple Reference Panels to Improve TWAS Power by Ensemble Machine Learning.*
+*SR-TWAS: Leveraging Multiple Reference Panels to Improve Transcriptome-Wide Association Study Power by Ensemble Machine Learning.*
 Randy L. Parrish, Aron S. Buchman, Shinya Tasaki, Yanling Wang, Denis Avey, Jishu Xu, Philip L. De Jager, David A. Bennett, Michael P. Epstein, Jingjing Yang.
-medRxiv 2023.06.20.23291605; doi: [https://doi.org/10.1101/2023.06.20.23291605](https://doi.org/10.1101/2023.06.20.23291605) [Preprint]
+*Nature Communications* **15**, 6646 (2024). doi: [https://doi.org/10.1038/s41467-024-50983-w](https://doi.org/10.1038/s41467-024-50983-w)
 
 ---
 
