@@ -539,6 +539,10 @@ def read_tabix(start, end, sampleID, chrm, path, file_cols, col_inds, cols, dtyp
 		if (not 'ES' in cols) and (('b' in cols) and ('beta' in cols)):
 			df['ES'] = df['b'] + df['beta']
 
+		# BGW-TWAS uses ES = BETA * PCP
+		if (not 'ES' in cols) and (('BETA' in cols) and ('PCP' in cols)):
+			df['ES'] = df['PCP'] * df['BETA']
+
 		if weight_threshold:
 			# filter out weights below threshold
 			df = df[operator.gt(np.abs(df['ES']), weight_threshold)].reset_index(drop=True)
